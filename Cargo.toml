@@ -1,0 +1,47 @@
+[package]
+name = "shellkit"
+version = "0.1.0"
+edition = "2024"
+description = "A full-screen interactive shell for CLI apps: header, input box with a command menu, status bar, help and settings panels, plus a self-updater and installer"
+license = "MIT"
+repository = "https://github.com/Deaadman/shellkit"
+readme = "README.md"
+keywords = ["tui", "shell", "terminal", "cli", "crossterm"]
+categories = ["command-line-interface"]
+publish = false
+
+[features]
+default = []
+# `CommandInfo::from_clap`: the command menu and help from a clap parser.
+clap = ["dep:clap"]
+# `Theme::from_toml`: themes kept in a file.
+theme-file = ["dep:serde", "dep:toml"]
+# The data folder, and settings kept in a TOML file.
+files = ["dep:directories", "dep:serde", "dep:toml"]
+# Installs into the user's local data folder and keeps a launcher on PATH.
+install = ["files", "dep:sha2", "dep:ureq"]
+# Updates from GitHub releases that carry a manifest.json; implies `install`.
+update = ["install", "dep:serde", "dep:serde_json"]
+
+[dependencies]
+anyhow = "1.0.104"
+crossterm = "0.29.0"
+clap = { version = "4.6.7", optional = true }
+directories = { version = "6.0.0", optional = true }
+serde = { version = "1.0.229", features = ["derive"], optional = true }
+serde_json = { version = "1.0.154", optional = true }
+sha2 = { version = "0.11.1", optional = true }
+toml = { version = "1.1.8", optional = true }
+ureq = { version = "3.4.2", optional = true }
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_System_Console"] }
+
+[dev-dependencies]
+clap = { version = "4.6.7", features = ["derive"] }
+
+[[example]]
+name = "minimal"
+
+[[example]]
+name = "custom"
