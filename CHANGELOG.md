@@ -21,6 +21,8 @@ See docs/development.md, "Releasing". CI checks this file's format.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-21
+
 ### Added
 
 - `Theme::on_light`, `Theme::for_terminal`, `readable` and `for_light` give colours that read on a light background, and `light_background` and `set_light_background` say whether the terminal has one.
@@ -40,5 +42,6 @@ See docs/development.md, "Releasing". CI checks this file's format.
 
 - The first release.
 
-[Unreleased]: https://github.com/Deaadman/abalone/compare/1.0.0...HEAD
+[Unreleased]: https://github.com/Deaadman/abalone/compare/1.0.1...HEAD
+[1.0.1]: https://github.com/Deaadman/abalone/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/Deaadman/abalone/releases/tag/1.0.0

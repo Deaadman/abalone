@@ -1,6 +1,6 @@
 [package]
 name = "abalone"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 description = "A full-screen interactive shell for CLI apps: header, input box with a command menu, status bar, help and settings panels, plus a self-updater and installer"
 license = "MIT"
