@@ -9,15 +9,14 @@
 # then, it uses a CARGO_REGISTRY_TOKEN repository secret; the first publish
 # needs one. Delete the secret once trusted publishing works.
 #
-# Turned off for now: tags start nothing, and a manual run checks but never
-# publishes (the jobs below only publish from a tag). To publish releases
-# from tags, uncomment the `push` trigger below.
+# A manual run checks but never publishes (the jobs below only publish
+# from a tag).
 
 name: Release
 
 on:
-  # push:
-  #   tags: ["[0-9]+.[0-9]+.[0-9]+*"]
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+*"]
   workflow_dispatch:
 
 # Read-only by default: CI runs dependencies' build scripts. Only the

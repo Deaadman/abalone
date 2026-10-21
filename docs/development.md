@@ -59,7 +59,7 @@ abalone = { path = "../abalone" }
 
 ## Releasing
 
-A release goes to crates.io, then to GitHub with its notes. The [release workflow](../.github/workflows/release.yml) is turned off: a tag starts nothing, and a manual run only checks. To release from a tag as below, first uncomment its `push` trigger.
+A release goes to crates.io, then to GitHub with its notes, when the [release workflow](../.github/workflows/release.yml) sees a version tag pushed. A manual run of it only checks.
 
 1. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, add a fresh `## [Unreleased]` above it, and update the links at the bottom.
 2. Set `version` in `Cargo.toml` to the same version, and commit.
