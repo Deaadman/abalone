@@ -1,0 +1,40 @@
+name: Feature request
+description: An idea for something Abalone could do, or do better.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you're trying to build
+      description: The app you're making and where Abalone falls short. Start from your app, not the feature.
+      placeholder: My app runs long jobs, and I want to show progress for each one in the status bar.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What Abalone could do about it. A sketch of the API or the screen is welcome.
+      placeholder: A progress bar the status bar can show, set from Ctx while a job runs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today instead
+      description: How you get by now, if at all, for example with your own Panel or Skin.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of Abalone
+      multiple: true
+      options:
+        - The shell and input box
+        - Panels
+        - Look and feel
+        - Logs, files or settings
+        - Installing, updating or releasing
+        - Something new

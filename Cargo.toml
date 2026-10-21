@@ -10,6 +10,10 @@ keywords = ["tui", "shell", "terminal", "cli", "crossterm"]
 categories = ["command-line-interface"]
 publish = false
 
+# docs.rs builds with every feature, so the docs show the APIs behind them.
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 default = []
 # `CommandInfo::from_clap`: the command menu and help from a clap parser.

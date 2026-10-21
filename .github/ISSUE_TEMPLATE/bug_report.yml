@@ -1,0 +1,75 @@
+name: Bug report
+description: Something in Abalone is wrong, broken or crashed.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting it. The more of this you fill in, the faster it can be fixed.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, and any error message or panic you saw.
+      placeholder: After resizing the terminal in /tui default, the input box is drawn twice.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      placeholder: The input box is redrawn once, below the earlier output.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen
+      description: |
+        The smallest code or steps that show it. If one of the examples shows it, say which,
+        for example `cargo run --example custom -- --inline`.
+      render: rust
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where it happened
+      multiple: true
+      options:
+        - The shell (header, input box, command menu, status bar, footer)
+        - Full screen or /tui default
+        - /help, /settings or /release-notes
+        - My own panels
+        - Look and feel (themes, skins, logo, spinner)
+        - Logs, the data folder or settings files
+        - Installing or updating (install scripts, the updater)
+        - The release workflow or release notes script
+        - Somewhere else
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Abalone version and features
+      description: The tag or commit in your Cargo.toml, and the features you turned on.
+      placeholder: 1.0.0, features = ["clap", "update"]
+    validations:
+      required: true
+
+  - type: input
+    id: terminal
+    attributes:
+      label: Operating system and terminal
+      placeholder: Windows 11, Windows Terminal 1.23
+    validations:
+      required: true
+
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots, the session log from your app, or anything else that might help.
