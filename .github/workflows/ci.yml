@@ -5,7 +5,8 @@
 #   and the tests, with every feature and with none;
 # - the API docs build with no broken links;
 # - the pictures in docs/images match what the code draws now;
-# - CHANGELOG.md's format.
+# - CHANGELOG.md's format;
+# - no crate in Cargo.lock has a security advisory.
 
 name: CI
 
@@ -74,3 +75,15 @@ jobs:
       - name: Changelog
         shell: pwsh
         run: ./templates/release-notes.ps1 -Check -Changelog CHANGELOG.md
+
+  audit:
+    name: Security advisories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      # Fails if a crate in Cargo.lock has a RustSec advisory.
+      - name: Audit
+        run: cargo audit

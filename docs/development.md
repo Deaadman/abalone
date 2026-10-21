@@ -21,7 +21,9 @@ cargo test --all-features
 cargo test --no-default-features
 ```
 
-CI runs these on Windows, macOS and Linux, with warnings as errors.
+CI runs these on Windows, macOS and Linux, with warnings as errors. It also runs `cargo audit`, which fails if a crate in `Cargo.lock` has a [security advisory](https://rustsec.org).
+
+Once a week, [Dependabot](../.github/dependabot.yml) opens a pull request for crates and actions with a newer version, with the minor and patch updates together. Merge it when CI passes.
 
 ## Layout
 
@@ -65,4 +67,4 @@ Apps depend on Abalone by git tag, so a release is a tag and its notes.
 
 The release workflow runs all of CI first. Then it checks that the tag matches `Cargo.toml`, and publishes the release with that version's section of `CHANGELOG.md` as its description.
 
-Follow [Semantic Versioning](https://semver.org): while the version starts with `0.`, a change that breaks apps' code bumps the middle number (0.1 to 0.2), and anything else the last.
+Follow [Semantic Versioning](https://semver.org): a change that breaks apps' code bumps the first number (1.4 to 2.0), a new feature the middle one (1.4 to 1.5), and a fix the last.
