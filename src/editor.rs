@@ -133,12 +133,19 @@ pub fn suggest(before: &str, ctx: &Context) -> Suggestions {
     let chars: Vec<char> = before.chars().collect();
     let start = chars.iter().rposition(|c| c.is_whitespace()).map_or(0, |i| i + 1);
     let word: String = chars[start..].iter().collect();
-    if start == 0 {
+    // Only spaces before the word: it's the command name.
+    if chars[..start].iter().all(|c| c.is_whitespace()) {
         let Some(prefix) = word.strip_prefix('/') else {
             return Suggestions::default();
         };
         let prefix = prefix.to_lowercase();
-        let starts = ctx.commands.iter().filter(|c| c.name.starts_with(&prefix));
+        // The command named exactly first, so Enter on a whole name runs it.
+        let exact = ctx.commands.iter().filter(|c| c.name == prefix);
+        let starts = exact.chain(
+            ctx.commands
+                .iter()
+                .filter(|c| c.name != prefix && c.name.starts_with(&prefix)),
+        );
         let contains = ctx
             .commands
             .iter()
@@ -260,7 +267,7 @@ impl Editor {
         if !s.command_word || s.items.is_empty() {
             return None;
         }
-        let typed: String = self.buf[s.start..].iter().collect();
+        let typed: String = self.buf[s.start..].iter().collect::<String>().to_lowercase();
         let value = &s.items[self.selected(s.items.len())].value;
         value
             .strip_prefix(typed.as_str())
@@ -275,8 +282,15 @@ impl Editor {
         self.insert_str(s);
     }
 
+    /// Insert `s` at the cursor. The line is one line: line breaks and tabs
+    /// in pasted text become spaces, and other control characters go.
     pub fn insert_str(&mut self, s: &str) {
-        for c in s.chars().filter(|c| !c.is_control()) {
+        let s = s.replace("\r\n", "\n");
+        let chars = s
+            .chars()
+            .map(|c| if matches!(c, '\n' | '\r' | '\t') { ' ' } else { c })
+            .filter(|c| !c.is_control());
+        for c in chars {
             self.buf.insert(self.cursor, c);
             self.cursor += 1;
         }
@@ -297,7 +311,16 @@ impl Editor {
     /// Replace the word being completed with the highlighted suggestion.
     fn accept(&mut self, s: &Suggestions) {
         let item = &s.items[self.selected(s.items.len())];
-        let tail: Vec<char> = self.buf[self.cursor..].to_vec();
+        // The whole word goes, the part after the cursor too, and the
+        // spaces after it, which the one added below stands in for.
+        let mut end = self.cursor;
+        while end < self.buf.len() && !self.buf[end].is_whitespace() {
+            end += 1;
+        }
+        while end < self.buf.len() && self.buf[end].is_whitespace() {
+            end += 1;
+        }
+        let tail: Vec<char> = self.buf[end..].to_vec();
         self.buf.truncate(s.start);
         self.buf.extend(item.value.chars());
         self.buf.push(' ');
@@ -342,7 +365,10 @@ impl Editor {
     }
 
     pub fn handle(&mut self, key: KeyEvent, ctx: &Context) -> Action {
-        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        // Windows reports AltGr (how many layouts type @ \ { } and €) as
+        // Ctrl+Alt: a character typed with both is text.
+        let altgr = key.modifiers.contains(KeyModifiers::CONTROL | KeyModifiers::ALT);
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL) && !altgr;
         let s = self.suggestions(ctx);
         let menu = !s.items.is_empty();
         if !(ctrl && key.code == KeyCode::Char('c')) {
@@ -408,7 +434,7 @@ impl Editor {
                 }
                 _ => {}
             },
-            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::ALT) => {
+            KeyCode::Char(c) if altgr || !key.modifiers.contains(KeyModifiers::ALT) => {
                 self.buf.insert(self.cursor, c);
                 self.cursor += 1;
                 self.edited();
@@ -695,5 +721,81 @@ mod tests {
             .map(|f| (f.long.as_str(), f.value.as_deref()))
             .collect();
         assert_eq!(flags, [("--item", Some("ITEM")), ("--all", None)]);
+    }
+
+    #[test]
+    fn a_leading_space_is_no_command_and_no_crash() {
+        let cmds = commands();
+        let c = Context {
+            commands: &cmds,
+            completer: &NoCompleter,
+        };
+        assert!(suggest(" ", &c).items.is_empty());
+        assert!(suggest("\u{3000}", &c).items.is_empty());
+        assert_eq!(values(&suggest("  /st", &c)), ["/status"]);
+    }
+
+    #[test]
+    fn an_exact_name_comes_first() {
+        let cmds = vec![CommandInfo::new("scan-all", ""), CommandInfo::new("scan", "")];
+        let c = Context {
+            commands: &cmds,
+            completer: &NoCompleter,
+        };
+        assert_eq!(values(&suggest("/scan", &c)), ["/scan", "/scan-all"]);
+        let mut ed = Editor::default();
+        typed(&mut ed, &c, "/scan");
+        assert_eq!(ed.handle(key(KeyCode::Enter), &c), Action::Submit("/scan".into()));
+    }
+
+    #[test]
+    fn accepting_mid_word_replaces_the_whole_word() {
+        let cmds = commands();
+        let c = Context {
+            commands: &cmds,
+            completer: &NoCompleter,
+        };
+        let mut ed = Editor::default();
+        ed.set_line("/status foo");
+        ed.cursor = 3;
+        assert_eq!(ed.handle(key(KeyCode::Enter), &c), Action::Submit("/status foo".into()));
+        ed.set_line("/sta foo");
+        ed.cursor = 2;
+        ed.handle(key(KeyCode::Tab), &c);
+        assert_eq!(ed.line(), "/scan foo");
+    }
+
+    #[test]
+    fn altgr_types_text() {
+        let cmds = commands();
+        let c = Context {
+            commands: &cmds,
+            completer: &NoCompleter,
+        };
+        let mut ed = Editor::default();
+        let altgr = |ch| KeyEvent::new(KeyCode::Char(ch), KeyModifiers::CONTROL | KeyModifiers::ALT);
+        ed.handle(key(KeyCode::Char('a')), &c);
+        ed.handle(altgr('@'), &c);
+        ed.handle(altgr('\\'), &c);
+        assert_eq!(ed.line(), "a@\\");
+    }
+
+    #[test]
+    fn pasted_lines_become_one_line() {
+        let mut ed = Editor::default();
+        ed.insert_str("/greet\r\nrm -rf x\tnow\n");
+        assert_eq!(ed.line(), "/greet rm -rf x now ");
+    }
+
+    #[test]
+    fn the_ghost_ignores_case() {
+        let cmds = commands();
+        let c = Context {
+            commands: &cmds,
+            completer: &NoCompleter,
+        };
+        let mut ed = Editor::default();
+        typed(&mut ed, &c, "/STA");
+        assert_eq!(ed.ghost(&c).as_deref(), Some("tus"));
     }
 }

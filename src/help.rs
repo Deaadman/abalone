@@ -301,6 +301,18 @@ impl HelpPanel {
         let t = theme();
         let n = commands.len();
         self.selected = self.selected.min(n.saturating_sub(1));
+        // Too short for the heading and the "more" rows: the highlighted command alone.
+        if commands_height(n) > h && h < 5 {
+            let Some(c) = commands.get(self.selected) else {
+                return vec![];
+            };
+            let mut rows = vec![
+                vec![(Style::fg(t.accent), format!("  ❯ /{}", c.name))],
+                vec![(Style::fg(t.muted), format!("    {}", c.about))],
+            ];
+            rows.truncate(h);
+            return rows;
+        }
         let mut rows: Vec<Row> = vec![vec![(Style::default(), "  Browse commands".into())]];
         // Everything, or as many as fit with a row for each "more" line.
         let fit = if commands_height(n) <= h {

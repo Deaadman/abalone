@@ -95,4 +95,18 @@ mod tests {
         }
         assert!(w.contains("${{ github.token }}"));
     }
+
+    #[test]
+    fn only_the_release_job_can_write() {
+        let w = Workflow::new("demo", "demo-cli").render();
+        assert!(w.contains("\npermissions:\n  contents: read\n"));
+        assert_eq!(w.matches("contents: write").count(), 1);
+        let release = &w[w.find("\n  release:").unwrap()..];
+        assert!(release.contains("contents: write"));
+        assert!(release.contains("--prerelease"));
+        assert_eq!(
+            w.matches("actions/checkout@").count(),
+            w.matches("persist-credentials: false").count()
+        );
+    }
 }

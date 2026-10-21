@@ -8,7 +8,7 @@ use crossterm::style::{Attribute, Print, ResetColor, SetAttribute, SetBackground
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, SetTitle};
 use crossterm::{execute, queue};
 
-use crate::style::Row;
+use crate::style::{Row, fit_width, text_width};
 
 /// Raw mode with bracketed paste, titled, on the alternate screen or the
 /// terminal's own; all of it is restored (the old title too) however the
@@ -101,8 +101,8 @@ pub fn print_row(out: &mut impl Write, row: &Row, w: usize) -> io::Result<()> {
         if left == 0 {
             break;
         }
-        let piece: String = text.chars().take(left).collect();
-        left -= piece.chars().count();
+        let piece = fit_width(text, left);
+        left -= text_width(piece);
         if let Some(c) = style.fg {
             queue!(out, SetForegroundColor(c))?;
         }

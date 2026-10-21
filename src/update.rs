@@ -101,10 +101,12 @@ impl WhatsNew {
     }
 
     /// The notes for `version` (this build), removed so they show once.
+    /// Notes for an older version are removed too; those for a newer one
+    /// stay for it (an older copy may still be running).
     pub fn take(data_dir: &Path, version: &str) -> Option<Self> {
         let path = Self::path(data_dir);
         let w: Self = serde_json::from_str(&std::fs::read_to_string(&path).ok()?).ok()?;
-        if !install::is_newer(version, &w.version) {
+        if !install::is_newer(&w.version, version) {
             let _ = std::fs::remove_file(&path);
         }
         (w.version == version).then_some(w)
@@ -330,8 +332,8 @@ impl Updater {
         if !present {
             let dir = exe.parent().expect("version_exe has a parent");
             std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
-            install::download(&self.file_url(manifest, &asset.file), &exe, &self.agent())?;
-            install::check_sha256(&exe, &asset.sha256, &asset.file)?;
+            let url = self.file_url(manifest, &asset.file);
+            install::download_verified(&url, &exe, &self.agent(), &asset.sha256, &asset.file)?;
             install::make_executable(&exe)?;
         }
         let mut cmd = Command::new(&exe);
@@ -508,11 +510,19 @@ mod tests {
             extra,
         }
         .save(&dir);
-        assert!(WhatsNew::take(&dir, "0.3.0").is_none(), "a newer build leaves them");
+        assert!(WhatsNew::take(&dir, "0.1.0").is_none(), "an older build leaves them");
         let w = WhatsNew::take(&dir, "0.2.0").unwrap();
         assert_eq!(w.notes, ["New."]);
         assert_eq!(w.extra["helper"]["tag"], "v1");
         assert!(WhatsNew::take(&dir, "0.2.0").is_none());
+        // A newer build than the notes are for removes them unseen.
+        WhatsNew {
+            version: "0.2.0".into(),
+            ..WhatsNew::default()
+        }
+        .save(&dir);
+        assert!(WhatsNew::take(&dir, "0.3.0").is_none());
+        assert!(!WhatsNew::path(&dir).exists());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

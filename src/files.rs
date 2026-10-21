@@ -42,8 +42,13 @@ pub fn data_dir(app: &str, explicit: Option<&Path>) -> Result<PathBuf> {
 }
 
 /// `MY_APP` for `my-app`: the start of the app's environment variables.
+/// Anything but ASCII letters and digits becomes `_`, so the name is safe
+/// in a shell or PowerShell variable.
 pub fn env_prefix(app: &str) -> String {
-    app.to_uppercase().replace(['-', ' ', '.'], "_")
+    app.to_uppercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+        .collect()
 }
 
 /// Opens `path` (a folder, say) in the system's file manager or its app:
@@ -72,12 +77,42 @@ pub fn load_toml<T: DeserializeOwned + Default>(path: &Path) -> Result<T> {
     toml::from_str(&text).with_context(|| format!("parsing {}", path.display()))
 }
 
-/// Writes `value` to a TOML file, creating its folder.
+/// Writes `value` to a TOML file, creating its folder. It's written to a
+/// temporary file beside it and renamed over it, so a crash or a full disk
+/// leaves the old file whole rather than half written.
 pub fn save_toml<T: Serialize>(path: &Path, value: &T) -> Result<()> {
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
+    let text = toml::to_string_pretty(value)?;
+    let dir = match path.parent() {
+        Some(d) if !d.as_os_str().is_empty() => d,
+        _ => Path::new("."),
+    };
+    std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
+    write_atomic(dir, path, text.as_bytes()).with_context(|| format!("writing {}", path.display()))
+}
+
+/// Writes `bytes` to a uniquely named file in `dir`, syncs it, and renames it to `path`.
+fn write_atomic(dir: &Path, path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    let name = path.file_name().map_or_else(|| "file".into(), |n| n.to_string_lossy());
+    let tmp = dir.join(format!(
+        ".{name}.{}-{}.tmp",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    ));
+    let written = (|| {
+        let mut f = std::fs::File::options().write(true).create_new(true).open(&tmp)?;
+        f.write_all(bytes)?;
+        f.sync_all()?;
+        drop(f);
+        std::fs::rename(&tmp, path)
+    })();
+    if written.is_err() {
+        let _ = std::fs::remove_file(&tmp);
     }
-    std::fs::write(path, toml::to_string_pretty(value)?).with_context(|| format!("writing {}", path.display()))
+    written
 }
 
 #[cfg(test)]
@@ -88,6 +123,12 @@ mod tests {
     struct Settings {
         name: Option<String>,
         on: Option<bool>,
+    }
+
+    #[test]
+    fn env_prefixes_are_safe_names() {
+        assert_eq!(env_prefix("my-app"), "MY_APP");
+        assert_eq!(env_prefix("bob's $app.v2"), "BOB_S__APP_V2");
     }
 
     #[test]
@@ -102,6 +143,18 @@ mod tests {
         };
         save_toml(&path, &s).unwrap();
         assert_eq!(load_toml::<Settings>(&path).unwrap(), s);
+        // Saving again replaces the file and leaves no temporary file behind.
+        let s = Settings {
+            name: Some("again".into()),
+            on: None,
+        };
+        save_toml(&path, &s).unwrap();
+        assert_eq!(load_toml::<Settings>(&path).unwrap(), s);
+        let names: Vec<_> = std::fs::read_dir(path.parent().unwrap())
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        assert_eq!(names, ["config.toml"]);
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 

@@ -15,8 +15,10 @@ on:
     tags: ["[0-9]+.[0-9]+.[0-9]+*"]
   workflow_dispatch:
 
+# Read-only by default: the build runs dependencies' build scripts. Only
+# the release job can write, and it builds nothing.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   check:
@@ -25,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Check the tag matches the package version
         shell: pwsh
@@ -48,6 +52,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - run: rustup target add ${{ matrix.target }}
 
@@ -73,8 +79,12 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Read the release notes from CHANGELOG.md
         shell: pwsh
@@ -106,5 +116,10 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        # The changelog section first, then GitHub's generated notes.
-        run: gh release create "$GITHUB_REF_NAME" dist/* manifest.json --title "$GITHUB_REF_NAME" --notes-file notes/release-notes.md --generate-notes --verify-tag
+        # The changelog section first, then GitHub's generated notes. A tag
+        # with a pre-release (1.1.0-beta.1) is marked as one, so it isn't
+        # "latest" and the updater and install scripts don't pick it.
+        run: |
+          prerelease=
+          case "$GITHUB_REF_NAME" in *-*) prerelease=--prerelease ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* manifest.json --title "$GITHUB_REF_NAME" --notes-file notes/release-notes.md --generate-notes --verify-tag $prerelease

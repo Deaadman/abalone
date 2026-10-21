@@ -3,6 +3,7 @@
 //! can be changed or extended with ordinary `Vec` operations.
 
 use crossterm::style::Color;
+use unicode_width::UnicodeWidthChar;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Style {
@@ -31,9 +32,32 @@ impl Style {
 /// One screen row as styled pieces.
 pub type Row = Vec<(Style, String)>;
 
-/// Columns `row` takes (one per char).
+/// Columns `row` takes on screen: two for wide characters (CJK, most
+/// emoji), none for combining marks and control characters.
 pub fn row_width(row: &Row) -> usize {
-    row.iter().map(|(_, s)| s.chars().count()).sum()
+    row.iter().map(|(_, s)| text_width(s)).sum()
+}
+
+/// Columns `c` takes on screen.
+pub fn char_width(c: char) -> usize {
+    c.width().unwrap_or(0)
+}
+
+/// Columns `text` takes on screen.
+pub fn text_width(text: &str) -> usize {
+    text.chars().map(char_width).sum()
+}
+
+/// The start of `text` that fits in `n` columns.
+pub fn fit_width(text: &str, n: usize) -> &str {
+    let mut used = 0;
+    for (i, c) in text.char_indices() {
+        used += char_width(c);
+        if used > n {
+            return &text[..i];
+        }
+    }
+    text
 }
 
 /// The row's text without styles.
@@ -47,7 +71,7 @@ pub fn rgb((r, g, b): (u8, u8, u8)) -> Color {
 
 /// `text` padded with spaces to `n` columns.
 pub fn pad(text: &str, n: usize) -> String {
-    let k = text.chars().count();
+    let k = text_width(text);
     if k >= n {
         text.to_owned()
     } else {
@@ -55,7 +79,7 @@ pub fn pad(text: &str, n: usize) -> String {
     }
 }
 
-/// Wrap at spaces into rows of at most `w` chars, breaking a longer word
+/// Wrap at spaces into rows of at most `w` columns, breaking a longer word
 /// where it must. Continuation rows keep the line's indent.
 pub fn wrap(text: &str, w: usize) -> Vec<String> {
     let w = w.max(1);
@@ -67,16 +91,25 @@ pub fn wrap(text: &str, w: usize) -> Vec<String> {
     loop {
         let lead = if first { 0 } else { indent };
         let room = w - lead;
-        if rest.len() <= room {
+        if rest.iter().map(|c| char_width(*c)).sum::<usize>() <= room {
             rows.push(" ".repeat(lead) + &rest.iter().collect::<String>());
             return rows;
         }
+        // The chars that fit; at least one, so a wide one in a one-column
+        // row still moves things along.
+        let mut fit = 0;
+        let mut used = 0;
+        while fit < rest.len() && used + char_width(rest[fit]) <= room {
+            used += char_width(rest[fit]);
+            fit += 1;
+        }
+        let fit = fit.max(1);
         // The last space that leaves something on this row, else a hard break.
-        let cut = rest[..=room]
+        let cut = rest[..=fit.min(rest.len() - 1)]
             .iter()
             .rposition(|c| *c == ' ')
             .filter(|&i| rest[..i].iter().any(|c| *c != ' '))
-            .unwrap_or(room);
+            .unwrap_or(fit);
         rows.push(" ".repeat(lead) + rest[..cut].iter().collect::<String>().trim_end());
         rest = &rest[cut..];
         while rest.first() == Some(&' ') {
@@ -152,6 +185,18 @@ mod tests {
         assert_eq!(wrap("3 replays: 0 new, 3 done", 12), ["3 replays: 0", "new, 3 done"]);
         assert_eq!(wrap("  ab cd ef", 6), ["  ab", "  cd", "  ef"]);
         assert_eq!(wrap("  abcdefgh", 6), ["  abcd", "  efgh"]);
+        // Wide characters take two columns each.
+        assert_eq!(wrap("日本語です", 4), ["日本", "語で", "す"]);
+        assert_eq!(wrap("日本", 1), ["日", "本"]);
+    }
+
+    #[test]
+    fn widths_count_columns() {
+        assert_eq!(text_width("ab日本"), 6);
+        assert_eq!(text_width("e\u{301}"), 1);
+        assert_eq!(fit_width("ab日本", 3), "ab");
+        assert_eq!(fit_width("ab日本", 4), "ab日");
+        assert_eq!(pad("日", 4), "日  ");
     }
 
     #[test]

@@ -22,6 +22,7 @@
 //! Release files are named by [`platform`]: `windows-x64`, `linux-arm64`,
 //! `macos-arm64` and so on.
 
+use std::cmp::Ordering;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -182,11 +183,24 @@ pub fn place_launcher(layout: &Layout, src: &Path) -> Result<()> {
     let name = layout.exe_name();
     let staged = layout.bin().join(format!("{name}.new"));
     fs::copy(src, &staged).with_context(|| format!("copying {} to {}", src.display(), staged.display()))?;
+    let mut aside = None;
     if launcher.exists() {
-        let aside = layout.bin().join(format!("{name}.old-{}", unique_suffix()));
-        fs::rename(&launcher, &aside).with_context(|| format!("moving the old {} aside", launcher.display()))?;
+        let to = layout.bin().join(format!("{name}.old-{}", unique_suffix()));
+        if let Err(e) = fs::rename(&launcher, &to) {
+            let _ = fs::remove_file(&staged);
+            return Err(e).with_context(|| format!("moving the old {} aside", launcher.display()));
+        }
+        aside = Some(to);
     }
-    fs::rename(&staged, &launcher).with_context(|| format!("placing {}", launcher.display()))
+    if let Err(e) = fs::rename(&staged, &launcher) {
+        // Put the old launcher back, so PATH still finds one.
+        if let Some(aside) = &aside {
+            let _ = fs::rename(aside, &launcher);
+        }
+        let _ = fs::remove_file(&staged);
+        return Err(e).with_context(|| format!("placing {}", launcher.display()));
+    }
+    Ok(())
 }
 
 /// Best effort: deletes launchers renamed aside (those still running stay
@@ -210,19 +224,20 @@ pub fn prune(dir: &Path, keep: &str) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
-    let mut others: Vec<(Vec<u64>, PathBuf)> = entries
+    let mut others: Vec<(String, PathBuf)> = entries
         .flatten()
         .filter(|e| e.path().is_dir() && e.file_name() != keep)
-        .map(|e| (version_key(&e.file_name().to_string_lossy()), e.path()))
+        .map(|e| (e.file_name().to_string_lossy().into_owned(), e.path()))
         .collect();
-    others.sort();
+    others.sort_by(|a, b| compare_versions(&a.0, &b.0).then_with(|| a.0.cmp(&b.0)));
     let n = others.len().saturating_sub(KEEP_OLDER);
     for (_, path) in others.into_iter().take(n) {
         let _ = fs::remove_dir_all(path);
     }
 }
 
-/// `v1.2.3` or `1.2.3-beta` as numbers for ordering; non-numeric parts are 0.
+/// `v1.2.3` or `1.2.3-beta` as numbers; non-numeric parts are 0. It drops
+/// the pre-release, so order versions with [`compare_versions`].
 pub fn version_key(v: &str) -> Vec<u64> {
     v.trim_start_matches('v')
         .split(['-', '+'])
@@ -233,9 +248,70 @@ pub fn version_key(v: &str) -> Vec<u64> {
         .collect()
 }
 
-/// True when `candidate` is a higher version than `current`.
+/// Orders versions as SemVer does: `1.0.0-beta.2` < `1.0.0-rc.1` < `1.0.0`.
+/// A leading `v` and build metadata (`+…`) are ignored, and missing
+/// numbers count as 0 (`1.2` is `1.2.0`).
+pub fn compare_versions(a: &str, b: &str) -> Ordering {
+    let (a_core, a_pre) = split_version(a);
+    let (b_core, b_pre) = split_version(b);
+    let (a_key, b_key) = (version_key(a_core), version_key(b_core));
+    let len = a_key.len().max(b_key.len());
+    let number = |key: &[u64], i: usize| key.get(i).copied().unwrap_or(0);
+    let core = (0..len)
+        .map(|i| number(&a_key, i).cmp(&number(&b_key, i)))
+        .find(|o| o.is_ne())
+        .unwrap_or(Ordering::Equal);
+    core.then_with(|| match (a_pre, b_pre) {
+        (None, None) => Ordering::Equal,
+        // A pre-release comes before its version.
+        (Some(_), None) => Ordering::Less,
+        (None, Some(_)) => Ordering::Greater,
+        (Some(a), Some(b)) => compare_pre_release(a, b),
+    })
+}
+
+/// `v1.2.3-rc.1+build` as `1.2.3` and `rc.1`.
+fn split_version(v: &str) -> (&str, Option<&str>) {
+    let v = v.trim_start_matches('v');
+    let v = v.split_once('+').map_or(v, |(v, _)| v);
+    match v.split_once('-') {
+        Some((core, pre)) => (core, Some(pre)),
+        None => (v, None),
+    }
+}
+
+/// Dot-separated parts in turn: numbers by value and before words, words
+/// by ASCII order; when one runs out first, it's the lower.
+fn compare_pre_release(a: &str, b: &str) -> Ordering {
+    let mut a = a.split('.');
+    let mut b = b.split('.');
+    loop {
+        let o = match (a.next(), b.next()) {
+            (None, None) => return Ordering::Equal,
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+            (Some(x), Some(y)) => match (numeric(x), numeric(y)) {
+                (Some(x), Some(y)) => x.len().cmp(&y.len()).then_with(|| x.cmp(y)),
+                (Some(_), None) => Ordering::Less,
+                (None, Some(_)) => Ordering::Greater,
+                (None, None) => x.cmp(y),
+            },
+        };
+        if o.is_ne() {
+            return o;
+        }
+    }
+}
+
+/// A number part without its leading zeros, which then orders by length
+/// and then by digits, however long it is.
+fn numeric(part: &str) -> Option<&str> {
+    (!part.is_empty() && part.bytes().all(|b| b.is_ascii_digit())).then(|| part.trim_start_matches('0'))
+}
+
+/// True when `candidate` is a higher version than `current` ([`compare_versions`]).
 pub fn is_newer(candidate: &str, current: &str) -> bool {
-    version_key(candidate) > version_key(current)
+    compare_versions(candidate, current) == Ordering::Greater
 }
 
 fn same_file(a: &Path, b: &Path) -> bool {
@@ -282,11 +358,18 @@ pub fn check_sha256(path: &Path, expected: &str, what: &str) -> Result<()> {
 }
 
 /// GET `url`, saying who's asking in the User-Agent (`my-app/1.2.0`).
+///
+/// Connecting and the response's headers each have a short limit; the
+/// body has an hour, so a slow link still finishes a large download and
+/// only a stalled one gives up (ureq has no limit per read).
 pub fn http_get(url: &str, agent: &str) -> Result<ureq::http::Response<ureq::Body>> {
     ureq::get(url)
         .header("User-Agent", agent)
         .config()
-        .timeout_global(Some(Duration::from_secs(300)))
+        .timeout_connect(Some(Duration::from_secs(30)))
+        .timeout_send_request(Some(Duration::from_secs(30)))
+        .timeout_recv_response(Some(Duration::from_secs(60)))
+        .timeout_recv_body(Some(Duration::from_secs(60 * 60)))
         .build()
         .call()
         .with_context(|| format!("GET {url}"))
@@ -294,21 +377,44 @@ pub fn http_get(url: &str, agent: &str) -> Result<ureq::http::Response<ureq::Bod
 
 /// Downloads `url` to `dest` (through a temporary name).
 pub fn download(url: &str, dest: &Path, agent: &str) -> Result<()> {
-    let mut resp = http_get(url, agent)?;
-    let partial = dest.with_extension("download");
-    let mut file = fs::File::create(&partial).with_context(|| format!("creating {}", partial.display()))?;
-    let mut reader = resp.body_mut().with_config().limit(MAX_DOWNLOAD).reader();
-    let mut buf = vec![0u8; 1 << 16];
-    loop {
-        let n = reader.read(&mut buf).with_context(|| format!("downloading {url}"))?;
-        if n == 0 {
-            break;
+    download_to(url, dest, agent, None)
+}
+
+/// [`download`], but `dest` is only replaced when the file's SHA-256 is
+/// `sha256`; `what` names it in the error.
+pub fn download_verified(url: &str, dest: &Path, agent: &str, sha256: &str, what: &str) -> Result<()> {
+    download_to(url, dest, agent, Some((sha256, what)))
+}
+
+/// Writes to a name of its own beside `dest`, so two downloads at once don't
+/// mix, checks it, then renames it into place. A failed one is deleted.
+fn download_to(url: &str, dest: &Path, agent: &str, sha256: Option<(&str, &str)>) -> Result<()> {
+    let name = dest.file_name().map_or("download".into(), |n| n.to_string_lossy());
+    let partial = dest.with_file_name(format!("{name}.{}.download", unique_suffix()));
+    let result = (|| {
+        let mut resp = http_get(url, agent)?;
+        let mut file = fs::File::create(&partial).with_context(|| format!("creating {}", partial.display()))?;
+        let mut reader = resp.body_mut().with_config().limit(MAX_DOWNLOAD).reader();
+        let mut buf = vec![0u8; 1 << 16];
+        loop {
+            let n = reader.read(&mut buf).with_context(|| format!("downloading {url}"))?;
+            if n == 0 {
+                break;
+            }
+            file.write_all(&buf[..n])
+                .with_context(|| format!("writing {}", partial.display()))?;
         }
-        file.write_all(&buf[..n])?;
+        file.sync_all()?;
+        drop(file);
+        if let Some((sha256, what)) = sha256 {
+            check_sha256(&partial, sha256, what)?;
+        }
+        fs::rename(&partial, dest).with_context(|| format!("placing {}", dest.display()))
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&partial);
     }
-    file.sync_all()?;
-    drop(file);
-    fs::rename(&partial, dest).with_context(|| format!("placing {}", dest.display()))
+    result
 }
 
 fn unique_suffix() -> String {
@@ -399,17 +505,17 @@ impl InstallScript {
 
     /// `install.ps1`, for Windows.
     pub fn render(&self) -> String {
-        self.fill(include_str!("../templates/install.ps1"), &self.after)
-            .replace("{{DONE}}", &self.done.replace('\'', "''"))
+        self.fill(include_str!("../templates/install.ps1"), &self.after, ps_quote)
     }
 
     /// `install.sh`, for macOS and Linux.
     pub fn render_sh(&self) -> String {
-        self.fill(include_str!("../templates/install.sh"), &self.after_sh)
-            .replace("{{DONE}}", &self.done.replace('\'', r"'\''"))
+        self.fill(include_str!("../templates/install.sh"), &self.after_sh, sh_quote)
     }
 
-    fn fill(&self, template: &str, after: &str) -> String {
+    /// The templates use `'{{NAME}}'` and the like as quoted strings, and
+    /// bare `{{NAME}}` only in comments.
+    fn fill(&self, template: &str, after: &str, quote: fn(&str) -> String) -> String {
         let after = if after.trim().is_empty() {
             "\n".to_owned()
         } else {
@@ -423,16 +529,41 @@ impl InstallScript {
                 .map(|l| l + "\n")
                 .collect()
         };
+        // A line break would end a comment early.
+        let comment = |s: &str| s.replace(['\r', '\n'], " ");
         // A checkout with CRLF endings still fills the template.
         template
             .replace("\r\n", "\n")
             .replace("{{ABOUT}}", &about)
-            .replace("{{NAME}}", &self.name)
-            .replace("{{APP}}", &self.app)
+            .replace("'{{NAME}}'", &quote(&self.name))
+            .replace("'{{APP}}'", &quote(&self.app))
+            .replace("'{{REPO}}'", &quote(&self.repo))
+            .replace("'{{DONE}}'", &quote(&self.done))
+            .replace("{{NAME}}", &comment(&self.name))
+            .replace("{{APP}}", &comment(&self.app))
             .replace("{{ENV}}", &env_prefix(&self.app))
-            .replace("{{REPO}}", &self.repo)
+            .replace("{{REPO}}", &comment(&self.repo))
             .replace("{{AFTER}}\n", &after)
     }
+}
+
+/// `s` as a PowerShell string taken literally: `'Bob''s'`. PowerShell
+/// also ends a quoted string at a curly single quote, so those double too.
+fn ps_quote(s: &str) -> String {
+    let mut out = String::from("'");
+    for c in s.chars() {
+        if matches!(c, '\'' | '\u{2018}' | '\u{2019}' | '\u{201A}' | '\u{201B}') {
+            out.push(c);
+        }
+        out.push(c);
+    }
+    out.push('\'');
+    out
+}
+
+/// `s` as a shell string taken literally: `'Bob'\''s'`.
+fn sh_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', r"'\''"))
 }
 
 #[cfg(test)]
@@ -452,6 +583,86 @@ mod tests {
         assert!(!is_newer("0.1.0", "0.1.0"));
         assert!(!is_newer("0.1.0-beta", "0.1.0"));
         assert!(is_newer("0.1.1", "0.1"));
+    }
+
+    #[test]
+    fn pre_releases_order_as_semver_does() {
+        let order = [
+            "1.0.0-alpha",
+            "1.0.0-alpha.1",
+            "1.0.0-alpha.beta",
+            "1.0.0-beta",
+            "1.0.0-beta.2",
+            "1.0.0-beta.11",
+            "1.0.0-rc.1",
+            "1.0.0",
+            "1.1.0-beta.1",
+            "1.1.0-beta.2",
+            "1.1.0",
+        ];
+        for pair in order.windows(2) {
+            assert!(is_newer(pair[1], pair[0]), "{} > {}", pair[1], pair[0]);
+            assert!(!is_newer(pair[0], pair[1]), "{} < {}", pair[0], pair[1]);
+        }
+        assert_eq!(compare_versions("v1.2.0+build.5", "1.2.0"), Ordering::Equal);
+        assert_eq!(compare_versions("1.2", "1.2.0"), Ordering::Equal);
+        assert!(is_newer("1.0.0-rc.1+b", "1.0.0-beta+c"));
+    }
+
+    #[test]
+    fn prunes_all_but_the_newest_older_version() {
+        let root = temp("prune");
+        for v in ["1.0.0", "1.1.0-beta.1", "1.1.0-beta.2", "1.1.0", "1.2.0"] {
+            fs::create_dir_all(root.join(v)).unwrap();
+        }
+        prune(&root, "1.2.0");
+        let mut left: Vec<String> = fs::read_dir(&root)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        left.sort();
+        assert_eq!(left, ["1.1.0", "1.2.0"]);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    /// Serves `body` to one request on a local port; returns its URL.
+    fn serve_once(body: &'static [u8]) -> String {
+        use std::io::BufRead;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/file", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut reader = std::io::BufReader::new(stream);
+            let mut line = String::new();
+            // The request, up to its blank line.
+            while reader.read_line(&mut line).is_ok_and(|n| n > 2) {
+                line.clear();
+            }
+            let mut stream = reader.into_inner();
+            let head = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            let _ = stream.write_all(head.as_bytes());
+            let _ = stream.write_all(body);
+        });
+        url
+    }
+
+    #[test]
+    fn a_download_is_placed_only_when_its_hash_matches() {
+        let root = temp("download");
+        let dest = root.join("demo");
+        let abc = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        let err = download_verified(&serve_once(b"abc"), &dest, "test", "00", "demo").unwrap_err();
+        assert!(format!("{err:#}").contains("SHA-256"), "{err:#}");
+        assert!(!dest.exists());
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 0, "the partial file is deleted");
+        download_verified(&serve_once(b"abc"), &dest, "test", abc, "demo").unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), b"abc");
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -525,7 +736,7 @@ mod tests {
             .render();
         assert!(s.contains("$Repo = 'me/demo'"));
         assert!(s.contains("$env:DEMO_HOME"));
-        assert!(s.contains("Installing Demo App"));
+        assert!(s.contains("$Name = 'Demo App'"));
         assert!(s.contains("& $download install"));
         assert!(s.contains("    Write-Host '  extra step'\n\n    Write-Host ''"));
         assert!(!s.contains("{{ABOUT}}"));
@@ -547,11 +758,32 @@ mod tests {
         assert!(s.starts_with("#!/bin/sh\n"));
         assert!(s.contains("REPO='me/demo'"));
         assert!(s.contains("${DEMO_HOME:-}"));
-        assert!(s.contains("Installing Demo App"));
+        assert!(s.contains("NAME='Demo App'"));
         assert!(s.contains("echo '  extra step'\n\necho"));
         assert!(s.contains(r"'It'\''s done.'"));
         assert!(!s.contains("{{"), "every placeholder is filled");
         assert!(!s.contains('\r'));
+    }
+
+    #[test]
+    fn the_scripts_quote_what_they_are_given() {
+        let tricky = "Bob's $App `x` 100% \u{2019}q";
+        let script = InstallScript::new(tricky, "bob", "me/bob").done("Done, Bob's.");
+        let ps = script.render();
+        assert!(ps.contains("$Name = 'Bob''s $App `x` 100% \u{2019}\u{2019}q'"), "{ps}");
+        assert!(ps.contains("Write-Host 'Done, Bob''s.'"));
+        assert!(ps.contains("# Installs Bob's $App"), "comments take it as it is");
+        let sh = script.render_sh();
+        assert!(sh.contains(r"NAME='Bob'\''s $App `x` 100% ’q'"), "{sh}");
+        assert!(sh.contains(r"printf '%s\n' 'Done, Bob'\''s.'"));
+        // The name is only ever quoted or in a comment.
+        for line in ps.lines().chain(sh.lines()) {
+            if line.contains("Bob") && !line.trim_start().starts_with('#') {
+                assert!(line.contains("'Bob'") || line.contains("'Done"), "{line}");
+            }
+        }
+        let broken = InstallScript::new("Two\nLines", "demo", "me/demo").render_sh();
+        assert!(broken.contains("# Installs Two Lines on macOS"));
     }
 
     /// `sh -n` reads the whole script without running it.
@@ -562,7 +794,7 @@ mod tests {
         let script = root.join("install.sh");
         fs::write(
             &script,
-            InstallScript::new("Demo", "demo", "me/demo")
+            InstallScript::new("Bob's $App `x` 100%", "demo", "me/demo")
                 .after_sh("echo done")
                 .render_sh(),
         )

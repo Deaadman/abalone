@@ -242,15 +242,18 @@ pub fn is_close(key: &KeyEvent) -> bool {
 
 /// ←→, Tab and the number keys move between `n` tabs; true when they did.
 pub fn tab_key(tab: &mut usize, key: &KeyEvent, n: usize) -> bool {
+    if n == 0 {
+        return false;
+    }
     match key.code {
-        KeyCode::Left | KeyCode::BackTab => *tab = (*tab + n - 1) % n,
+        KeyCode::Left | KeyCode::BackTab => *tab = (*tab % n + n - 1) % n,
         KeyCode::Right | KeyCode::Tab => *tab = (*tab + 1) % n,
         KeyCode::Char(c) if c.is_ascii_digit() && !key.modifiers.contains(KeyModifiers::CONTROL) => {
-            let i = c as usize - '1' as usize;
-            if c == '0' || i >= n {
-                return false;
+            // '1' is the first tab; '0' is none.
+            match (c as usize).checked_sub('1' as usize) {
+                Some(i) if i < n => *tab = i,
+                _ => return false,
             }
-            *tab = i;
         }
         _ => return false,
     }
@@ -279,6 +282,17 @@ pub fn step(v: &mut usize, by: isize, n: usize) {
 mod tests {
     use super::*;
     use crate::style::row_text;
+
+    #[test]
+    fn number_keys_pick_tabs_and_zero_picks_none() {
+        let key = |c| KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE);
+        let mut tab = 1;
+        assert!(!tab_key(&mut tab, &key('0'), 2));
+        assert!(!tab_key(&mut tab, &key('3'), 2));
+        assert!(tab_key(&mut tab, &key('1'), 2));
+        assert_eq!(tab, 0);
+        assert!(!tab_key(&mut tab, &KeyEvent::new(KeyCode::Left, KeyModifiers::NONE), 0));
+    }
 
     #[test]
     fn frame_is_exactly_as_tall_as_asked() {

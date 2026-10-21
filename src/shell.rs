@@ -16,8 +16,8 @@
 use std::collections::VecDeque;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver};
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -157,6 +157,8 @@ pub trait App: Sized {
 }
 
 type Work<M> = Box<dyn FnOnce() -> M + Send + 'static>;
+
+type PanicHook = Box<dyn Fn(&std::panic::PanicHookInfo<'_>) + Send + Sync + 'static>;
 
 enum Do<M> {
     Start(String, Work<M>),
@@ -706,20 +708,48 @@ impl<A: App> Shell<A> {
         let (tx, rx) = mpsc::channel();
         out::capture(Some(tx));
         self.rx = Some(rx);
-        let result = Screen::on(&self.title, self.tui == Tui::Fullscreen)
-            .map_err(anyhow::Error::from)
-            .and_then(|mut screen| {
-                let result = self.event_loop(&mut screen);
-                // Inline, the output stays and the input box goes.
-                if !screen.alt() {
-                    let mut out = io::stdout();
-                    self.erase_live(&mut out)?;
-                    out.flush()?;
+        // A panic's message is printed while the screen is still up, where
+        // it would vanish with the alternate screen: keep it, and say it
+        // again once the terminal is back.
+        let said: Arc<Mutex<Option<String>>> = Arc::default();
+        let before: Arc<PanicHook> = Arc::new(std::panic::take_hook());
+        let runner = std::thread::current().id();
+        {
+            let (said, before) = (said.clone(), before.clone());
+            std::panic::set_hook(Box::new(move |info| {
+                if std::thread::current().id() == runner
+                    && let Ok(mut s) = said.lock()
+                {
+                    *s = Some(info.to_string());
                 }
-                result
-            });
+                before(info);
+            }));
+        }
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            Screen::on(&self.title, self.tui == Tui::Fullscreen)
+                .map_err(anyhow::Error::from)
+                .and_then(|mut screen| {
+                    let result = self.event_loop(&mut screen);
+                    // Inline, the output stays and the input box goes.
+                    if !screen.alt() {
+                        let mut out = io::stdout();
+                        self.erase_live(&mut out)?;
+                        out.flush()?;
+                    }
+                    result
+                })
+        }));
+        std::panic::set_hook(Box::new(move |info| before(info)));
         out::capture(None);
-        result
+        match result {
+            Ok(result) => result,
+            Err(panic) => {
+                if let Some(s) = said.lock().ok().and_then(|mut s| s.take()) {
+                    eprintln!("{s}");
+                }
+                std::panic::resume_unwind(panic)
+            }
+        }
     }
 
     /// Run an app callback with a `Ctx`, then do what it asked. False to quit.
@@ -1017,7 +1047,9 @@ impl<A: App> Shell<A> {
         }
         self.transcript.push(Item::Echo(line.to_owned()));
         self.scroll = 0;
-        if self.is_builtin(&name, "exit") || (name == "quit" && self.builtins.contains(&"exit")) {
+        // `quit` is another name for the built-in exit, unless the app has a `quit` of its own.
+        let quit = name == "quit" && self.builtins.contains(&"exit") && !self.commands.iter().any(|c| c.name == "quit");
+        if self.is_builtin(&name, "exit") || quit {
             return false;
         }
         if self.is_builtin(&name, "clear") {
@@ -1073,21 +1105,31 @@ impl<A: App> Shell<A> {
     pub fn render(&mut self, w: usize, h: usize) -> Frame {
         let (w, h) = (w.max(20), h.max(8));
         if let Some(panel) = self.panel.as_mut().filter(|p| p.full_screen()) {
-            return Frame {
-                rows: panel.rows(w, h),
-                cursor: None,
-            };
+            // Exactly `h` rows, so nothing of the last frame is left below.
+            let mut rows = panel.rows(w, h);
+            rows.resize(h, vec![]);
+            return Frame { rows, cursor: None };
+        }
+        if self.scroll > 0 {
+            // Clamped as `compose` will, under the status row and input box,
+            // so the status row never claims more than there is.
+            let rows = self.transcript_rows(w).len();
+            self.scroll = self.scroll.min(rows.saturating_sub(h.saturating_sub(5)));
         }
         let panel_h = (h * 4 / 5).max(14).min(h);
-        let (bottom, cursor) = self.bottom(w, panel_h);
-        let cursor = cursor.map(|(col, row)| (col, h.saturating_sub(bottom.len()) + row));
+        let (mut bottom, cursor) = self.bottom(w, panel_h, h);
+        // Too tall for the screen: the top goes, so the input box stays.
+        let over = bottom.len().saturating_sub(h);
+        bottom.drain(..over);
+        let cursor = cursor.and_then(|(col, row)| row.checked_sub(over).map(|r| (col, h - bottom.len() + r)));
         self.compose(w, h, bottom, cursor)
     }
 
     /// What goes under the output: an open panel (no cursor), or the
     /// status bar or menu, the input box and the footer, with the cursor's
-    /// column and row among them. Panels get `panel_h` rows.
-    fn bottom(&mut self, w: usize, panel_h: usize) -> (Vec<Row>, Option<(usize, usize)>) {
+    /// column and row among them. Panels get `panel_h` rows, and the menu
+    /// fits in `h` with the input box.
+    fn bottom(&mut self, w: usize, panel_h: usize, h: usize) -> (Vec<Row>, Option<(usize, usize)>) {
         if let Some(panel) = &mut self.panel {
             return (panel.rows(w, panel_h), None);
         }
@@ -1120,8 +1162,10 @@ impl<A: App> Shell<A> {
                 .take(self.editor.cursor())
                 .skip(s.start)
                 .collect();
+            // The input box's four rows and the menu's count row left over.
+            let max = self.menu_rows.min(h.saturating_sub(5)).max(1);
             self.skin
-                .menu(&s.items, self.editor.selected(s.items.len()), &typed, self.menu_rows)
+                .menu(&s.items, self.editor.selected(s.items.len()), &typed, max)
         };
         let line = self.editor.line();
         let name = command_name(&line);
@@ -1216,7 +1260,7 @@ impl<A: App> Shell<A> {
         let commit = self.item_rows(&self.transcript[self.inline.committed.min(done)..done], w);
         let mut live = if animating { self.transcript_rows(w) } else { vec![] };
         let above = live.len();
-        let (bottom, cursor) = self.bottom(w, (h * 4 / 5).max(14).min(h - 1));
+        let (bottom, cursor) = self.bottom(w, (h * 4 / 5).max(14).min(h - 1), h - 1);
         live.extend(bottom);
         // Never taller than the screen, or the top couldn't be redrawn.
         let cut = live.len().saturating_sub(h - 1);
@@ -1277,14 +1321,18 @@ impl<A: App> Shell<A> {
     fn draw(&mut self, out: &mut impl Write) -> io::Result<()> {
         let (w, h) = terminal::size().map(|(w, h)| (w as usize, h as usize))?;
         let frame = self.render(w, h);
+        // Smaller than `render` draws: the bottom of the frame, input box and all.
+        let skip = frame.rows.len().saturating_sub(h);
         queue!(out, Hide)?;
-        for (y, row) in frame.rows.iter().enumerate() {
+        for (y, row) in frame.rows.iter().skip(skip).enumerate() {
             queue!(out, MoveTo(0, y as u16))?;
             print_row(out, row, w)?;
             queue!(out, Clear(ClearType::UntilNewLine))?;
         }
-        if let Some((x, y)) = frame.cursor {
-            queue!(out, MoveTo(x as u16, y as u16), Show)?;
+        if let Some((x, y)) = frame.cursor
+            && y >= skip
+        {
+            queue!(out, MoveTo(x.min(w.saturating_sub(1)) as u16, (y - skip) as u16), Show)?;
         }
         out.flush()
     }
@@ -1424,6 +1472,59 @@ mod tests {
         shell.submit("/tui fullscreen");
         assert_eq!(shell.tui_mode(), Tui::Fullscreen);
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn the_input_stays_on_a_short_screen_with_the_menu_open() {
+        for h in [8, 10, 12] {
+            let mut shell = Shell::new(Echoer { ran: vec![] });
+            shell.key(key(KeyCode::Char('/')));
+            let f = shell.render(60, h);
+            assert_eq!(f.rows.len(), h);
+            let (_, y) = f.cursor.expect("a cursor");
+            assert!(y < h, "the cursor is on screen at h={h}");
+            assert!(row_text(&f.rows[y]).starts_with("❯ /"), "the input box at h={h}");
+            assert!(text(&f).contains("/help for commands"), "the footer at h={h}");
+        }
+    }
+
+    #[test]
+    fn the_status_row_never_claims_more_than_there_is() {
+        let mut shell = Shell::new(Echoer { ran: vec![] });
+        shell.set_notices(vec![]);
+        shell.key(key(KeyCode::PageUp));
+        assert!(!text(&shell.render(60, 24)).contains("more lines"), "nothing to scroll");
+        for i in 0..40 {
+            shell.transcript_mut().push(Item::Line(Kind::Out, format!("line {i}")));
+        }
+        for _ in 0..6 {
+            shell.key(key(KeyCode::PageUp));
+        }
+        let shown = text(&shell.render(60, 24));
+        let rows = shell.transcript_rows(60).len();
+        assert!(shown.contains(&format!("↓ {} more lines", rows - 19)), "{shown}");
+    }
+
+    #[test]
+    fn an_apps_own_quit_is_the_apps() {
+        struct Game;
+        impl App for Game {
+            type Msg = ();
+            type Panel = NoPanel;
+            fn commands(&self) -> Vec<CommandInfo> {
+                vec![CommandInfo::new("quit", "Quit the game")]
+            }
+            fn run(&mut self, _line: &str, _ctx: &mut Ctx<Self>) {}
+        }
+        assert!(Shell::new(Game).submit("/quit"), "the app's quit runs");
+        assert!(!Shell::new(Echoer { ran: vec![] }).submit("/quit"), "else it exits");
+    }
+
+    #[test]
+    fn a_space_in_an_empty_box_is_just_a_space() {
+        let mut shell = Shell::new(Echoer { ran: vec![] });
+        shell.key(key(KeyCode::Char(' ')));
+        shell.render(60, 12);
     }
 
     #[test]

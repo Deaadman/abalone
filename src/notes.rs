@@ -166,11 +166,19 @@ impl NotesPanel {
             Item::new(pad(&format!("Version {}", r.version), label_w))
                 .tail(count(r.items.len(), "item", "items"), t.muted)
         }));
-        let footer = [vec![], vec![(muted, "  Enter to confirm · Esc to cancel".into())]];
-        let list_h = h.saturating_sub(rows.len() + footer.len()).max(3);
+        let mut footer = vec![vec![], vec![(muted, "  Enter to confirm · Esc to cancel".into())]];
+        // On a short screen the intro and the gaps go, so the list and its keys fit.
+        if h < rows.len() + footer.len() + 3 {
+            rows.truncate(2);
+            footer.remove(0);
+        }
+        let list_h = h.saturating_sub(rows.len() + footer.len()).max(1);
         let n = items.len();
         if n <= list_h {
             rows.extend(list_rows(items, self.sel, n));
+        } else if list_h == 1 {
+            let picked: Vec<Item> = items.into_iter().skip(self.sel).take(1).collect();
+            rows.extend(list_rows(picked, 0, 1));
         } else {
             // The last row says how many are below; the selection stays in view.
             let window = list_h - 1;

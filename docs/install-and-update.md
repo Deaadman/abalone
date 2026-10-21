@@ -13,6 +13,8 @@ People run one line, and get the newest version on their PATH:
 
 Each script downloads the build for that computer, checks it against the release's list of files and their SHA-256 hashes, adds the app to the PATH, and runs `my-app install`. On Arm Windows and Arm Macs, an x64 build is used when there isn't one of their own.
 
+`MY_APP_VERSION=1.2.0` installs that release instead of the newest. It only pins the install: the app then updates itself to the newest release like any other copy, unless `MY_APP_DISABLE_AUTOUPDATER=1` is set too (see [Updates](#updates)).
+
 Abalone writes both scripts for you. Keep them in your repository, with a test that fails when they're out of date:
 
 ```rust

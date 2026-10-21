@@ -103,8 +103,9 @@ impl Default for Theme {
 
 /// `#rrggbb` (or `rrggbb`) as a colour.
 pub fn hex(s: &str) -> Option<Color> {
-    let s = s.trim().trim_start_matches('#');
-    if s.len() != 6 || !s.is_ascii() {
+    let s = s.trim();
+    let s = s.strip_prefix('#').unwrap_or(s);
+    if s.len() != 6 || !s.bytes().all(|b| b.is_ascii_hexdigit()) {
         return None;
     }
     let part = |i: usize| u8::from_str_radix(&s[i..i + 2], 16).ok();
@@ -133,6 +134,9 @@ mod tests {
         assert_eq!(hex("00ff00"), Some(rgb((0, 255, 0))));
         assert_eq!(hex("#fff"), None);
         assert_eq!(hex("#gg0000"), None);
+        assert_eq!(hex("#+f+f+f"), None);
+        assert_eq!(hex("##ff8c00"), None);
+        assert_eq!(hex("#-10000"), None);
     }
 
     #[cfg(feature = "theme-file")]

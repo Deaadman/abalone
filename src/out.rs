@@ -96,7 +96,7 @@ pub fn show(kind: Kind, text: String) {
     match sink {
         Some(tx) => {
             for line in text.split('\n') {
-                let _ = tx.send(vec![(kind, line.trim_end_matches('\r').to_owned())]);
+                let _ = tx.send(vec![(kind, plain(line))]);
             }
         }
         None if kind.stdout() => println!("{text}"),
@@ -109,10 +109,51 @@ pub fn row(pieces: Line) {
     let sink = SINK.lock().ok().and_then(|s| s.clone());
     match sink {
         Some(tx) => {
-            let _ = tx.send(pieces);
+            let _ = tx.send(pieces.into_iter().map(|(k, t)| (k, plain(&t))).collect());
         }
         None => println!("{}", pieces.into_iter().map(|(_, t)| t).collect::<String>()),
     }
+}
+
+/// `text` safe to draw in the shell: terminal escape sequences (colours a
+/// tool printed, cursor moves) and other control characters taken out, and
+/// tabs turned into spaces, so they can't move the cursor or throw the
+/// layout off.
+pub fn plain(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '\x1b' => match chars.next() {
+                // CSI: parameters and intermediates up to a final byte.
+                Some('[') => {
+                    for c in chars.by_ref() {
+                        if ('\x40'..='\x7e').contains(&c) {
+                            break;
+                        }
+                    }
+                }
+                // OSC, DCS and the like: up to BEL or ESC \.
+                Some(']' | 'P' | 'X' | '^' | '_') => {
+                    while let Some(c) = chars.next() {
+                        if c == '\x07' {
+                            break;
+                        }
+                        if c == '\x1b' && chars.peek() == Some(&'\\') {
+                            chars.next();
+                            break;
+                        }
+                    }
+                }
+                // Two-character escapes.
+                _ => {}
+            },
+            '\t' => out.push_str("    "),
+            c if c.is_control() => {}
+            c => out.push(c),
+        }
+    }
+    out
 }
 
 /// `println!`, or a transcript line in the shell.
@@ -132,4 +173,17 @@ macro_rules! errln {
     ($($t:tt)*) => {
         $crate::out::emit($crate::out::Kind::Warn, format!($($t)*))
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::plain;
+
+    #[test]
+    fn plain_takes_out_escapes_and_controls() {
+        assert_eq!(plain("\x1b[1;31mred\x1b[0m done\r"), "red done");
+        assert_eq!(plain("\x1b]0;title\x07a\x1b]8;;url\x1b\\b"), "ab");
+        assert_eq!(plain("a\tb\x08c"), "a    bc");
+        assert_eq!(plain("日本 ok"), "日本 ok");
+    }
 }

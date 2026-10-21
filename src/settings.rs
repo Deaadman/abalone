@@ -283,6 +283,10 @@ pub struct SettingsPanel {
     status: StatusGroups,
     tab: usize,
     sel: usize,
+    /// The Status tab's first row shown.
+    status_top: usize,
+    /// Body rows shown at the last draw, for paging the Status tab.
+    body_h: usize,
     picker: Option<Picker>,
     field: Option<Field>,
     /// Why the last change was not saved.
@@ -297,6 +301,8 @@ impl SettingsPanel {
             status,
             tab: 0,
             sel: 0,
+            status_top: 0,
+            body_h: 0,
             picker: None,
             field: None,
             error: None,
@@ -326,10 +332,13 @@ impl SettingsPanel {
                 SettingsAction::None
             }
             Outcome::Pick(p) => {
+                // A stale error would push the picker's rows off a short panel.
+                self.error = None;
                 self.picker = Some(p);
                 SettingsAction::None
             }
             Outcome::Edit(f) => {
+                self.error = None;
                 self.field = Some(f);
                 SettingsAction::None
             }
@@ -378,7 +387,8 @@ impl SettingsPanel {
     }
 
     pub fn key(&mut self, key: KeyEvent) -> SettingsAction {
-        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        // AltGr comes as Ctrl+Alt on Windows; those are characters, not shortcuts.
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL) && !key.modifiers.contains(KeyModifiers::ALT);
         let close = key.code == KeyCode::Esc || (ctrl && key.code == KeyCode::Char('c'));
         if let Some(f) = &mut self.field {
             match key.code {
@@ -445,6 +455,12 @@ impl SettingsPanel {
                 self.tab = 1 - self.tab;
                 self.error = None;
             }
+            KeyCode::Up if self.tab == 0 => self.status_top = self.status_top.saturating_sub(1),
+            KeyCode::Down if self.tab == 0 => self.status_top += 1,
+            KeyCode::PageUp if self.tab == 0 => self.status_top = self.status_top.saturating_sub(self.page()),
+            KeyCode::PageDown if self.tab == 0 => self.status_top += self.page(),
+            KeyCode::Home if self.tab == 0 => self.status_top = 0,
+            KeyCode::End if self.tab == 0 => self.status_top = usize::MAX,
             _ if self.tab != 1 => {}
             KeyCode::Up => self.sel = self.sel.saturating_sub(1),
             KeyCode::Down => self.sel += 1,
@@ -462,7 +478,19 @@ impl SettingsPanel {
             _ => {}
         }
         self.sel = self.sel.min(self.ids().len().saturating_sub(1));
+        self.status_top = self.status_top.min(self.status_max());
         SettingsAction::None
+    }
+
+    /// Status rows a page key moves.
+    fn page(&self) -> usize {
+        self.body_h.saturating_sub(1).max(1)
+    }
+
+    /// The Status tab's last useful first row, at the last draw's height.
+    fn status_max(&self) -> usize {
+        let len = self.status.iter().map(Vec::len).sum::<usize>() + self.status.len().saturating_sub(1);
+        len.saturating_sub(self.body_h.max(1))
     }
 
     /// The panel for a `w`-column screen: as tall as its content, at most `h` rows.
@@ -482,15 +510,12 @@ impl SettingsPanel {
                 status.push(vec![]);
             }
             for (label, value) in group {
-                let mut row: Row = vec![(
-                    Style::default(),
-                    format!("  {}", pad(&format!("{label}:"), STATUS_LABEL_W)),
-                )];
+                let mut row: Row = vec![(Style::default(), format!("  {}", status_label(label)))];
                 row.extend(value.iter().map(|(k, t)| (k.style(), t.clone())));
                 status.push(row);
             }
         }
-        let config = self.config_rows();
+        let (config, focus) = self.config_rows();
         let hint = if self.tab == 0 {
             "←→ tabs · Esc closes".to_owned()
         } else if let Some(f) = &self.field {
@@ -504,9 +529,17 @@ impl SettingsPanel {
         // As tall as the Config tab can get with a picker open, so switching tabs keeps the height.
         let needed = status.len().max(self.model.max_rows() + PICK_ROWS + 4);
         let body_h = needed.min(h.saturating_sub(top.len() + bottom.len())).max(1);
+        self.body_h = body_h;
+        let skip = if self.tab == 0 {
+            self.status_top = self.status_top.min(status.len().saturating_sub(body_h));
+            self.status_top
+        } else {
+            // Keep the selected row in view, and the open picker's highlighted option under it.
+            let (sel, pick) = focus;
+            let most = config.len().saturating_sub(body_h);
+            most.min(sel).max((pick + 1).saturating_sub(body_h))
+        };
         let mut body = if self.tab == 0 { status } else { config };
-        // Keep the open picker in view on a short screen.
-        let skip = body.len().saturating_sub(body_h).min(self.sel);
         body.drain(..skip);
         body.resize(body_h, vec![]);
         let mut rows = top;
@@ -516,17 +549,25 @@ impl SettingsPanel {
         rows
     }
 
-    fn config_rows(&mut self) -> Vec<Row> {
+    /// The Config tab's rows, and the indexes of the selected row and of the
+    /// open picker's highlighted option (the selected row when none is open).
+    fn config_rows(&mut self) -> (Vec<Row>, (usize, usize)) {
         let groups = self.model.groups();
         let label_w = self.model.label_width();
         let mut rows: Vec<Row> = Vec::new();
         let mut i = 0;
+        let (mut sel, mut pick) = (0, None);
         for (g, group) in groups.into_iter().enumerate() {
             if g > 0 {
                 rows.push(vec![]);
             }
             for setting in group {
-                self.setting_rows(&mut rows, &setting, i == self.sel, label_w);
+                let on = i == self.sel;
+                if on {
+                    sel = rows.len();
+                }
+                let p = self.setting_rows(&mut rows, &setting, on, label_w);
+                pick = pick.or(p);
                 i += 1;
             }
         }
@@ -534,11 +575,12 @@ impl SettingsPanel {
             rows.push(vec![]);
             rows.push(vec![(Style::fg(theme().danger), format!("    {e}"))]);
         }
-        rows
+        (rows, (sel, pick.unwrap_or(sel)))
     }
 
-    /// One setting's row, and its picker when open.
-    fn setting_rows(&self, rows: &mut Vec<Row>, setting: &SettingRow, on: bool, label_w: usize) {
+    /// One setting's row, and its picker when open; returns the index of the
+    /// picker's highlighted option, if one is shown.
+    fn setting_rows(&self, rows: &mut Vec<Row>, setting: &SettingRow, on: bool, label_w: usize) -> Option<usize> {
         let t = theme();
         let base = if on { Style::fg(t.accent) } else { Style::default() };
         let mut row: Row = vec![
@@ -577,13 +619,11 @@ impl SettingsPanel {
             }
         }
         rows.push(row);
-        let Some(p) = self.picker.as_ref().filter(|p| p.under == setting.id) else {
-            return;
-        };
+        let p = self.picker.as_ref().filter(|p| p.under == setting.id)?;
         let indent = " ".repeat(label_w + 4);
         if let Some((waiting, _, _)) = &p.loading {
             rows.push(vec![(Style::fg(t.muted), format!("{indent}{waiting}"))]);
-            return;
+            return Some(rows.len() - 1);
         }
         if let Some(n) = &p.note {
             let why: String = if n.chars().count() > 76 {
@@ -597,8 +637,10 @@ impl SettingsPanel {
             )]);
             rows.push(vec![(Style::fg(t.muted), format!("{indent}{why}"))]);
         }
+        let mut at = rows.len().saturating_sub(1);
         if p.options.is_empty() {
             rows.push(vec![(Style::fg(t.muted), format!("{indent}{}", p.empty))]);
+            at = rows.len() - 1;
         }
         let name_w = p
             .options
@@ -619,6 +661,9 @@ impl SettingsPanel {
         }
         for (j, choice) in p.options.iter().enumerate().skip(first).take(shown) {
             let pon = j == p.selected;
+            if pon {
+                at = rows.len();
+            }
             let name_style = match choice.style {
                 Some(s) if pon => s.bold(),
                 Some(s) => s,
@@ -639,7 +684,13 @@ impl SettingsPanel {
         if below > 0 {
             rows.push(vec![(Style::fg(t.muted), format!("{indent}↓ {below} more"))]);
         }
+        Some(at)
     }
+}
+
+/// `Label:` padded to the Status tab's label width, always with a space after it.
+fn status_label(label: &str) -> String {
+    format!("{} ", pad(&format!("{label}:"), STATUS_LABEL_W - 1))
 }
 
 /// The Status tab as plain lines, for printing outside the shell.
@@ -650,7 +701,7 @@ pub fn status_lines(groups: &StatusGroups) -> Vec<Line> {
             lines.push(vec![(Kind::Out, String::new())]);
         }
         for (label, value) in group {
-            let mut row = vec![(Kind::Out, pad(&format!("{label}:"), STATUS_LABEL_W))];
+            let mut row = vec![(Kind::Out, status_label(label))];
             row.extend(value.iter().cloned());
             lines.push(row);
         }
@@ -999,5 +1050,91 @@ mod tests {
             .map(|l| l.iter().map(|(_, t)| t.as_str()).collect())
             .collect();
         assert_eq!(lines, ["Version:      v1", "", "Logs:         C:\\logs"]);
+    }
+
+    #[test]
+    fn a_long_status_label_still_has_a_space() {
+        let groups: StatusGroups = vec![vec![("Automatic updates".into(), vec![(Kind::Out, "On".into())])]];
+        let line: String = status_lines(&groups)[0].iter().map(|(_, t)| t.as_str()).collect();
+        assert_eq!(line, "Automatic updates: On");
+        let mut p = SettingsPanel::new(Box::new(
+            SimpleSettings::new().status("Automatic updates", || "On".into()),
+        ));
+        assert!(text(&p.rows(80, 30)).contains("Automatic updates: On"));
+    }
+
+    #[test]
+    fn altgr_characters_go_into_a_field() {
+        let model = SimpleSettings::new().text("Name", || None, |_| Ok(()));
+        let mut p = SettingsPanel::new(Box::new(model)).on_config();
+        p.key(key(KeyCode::Enter));
+        for c in ['@', '\\', '{', '€'] {
+            p.key(KeyEvent::new(
+                KeyCode::Char(c),
+                KeyModifiers::CONTROL | KeyModifiers::ALT,
+            ));
+        }
+        p.key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL));
+        let f = p.field.as_ref().unwrap();
+        assert_eq!(f.buf.iter().collect::<String>(), "@\\{€");
+    }
+
+    #[test]
+    fn the_status_tab_scrolls_on_its_own() {
+        let mut model = SimpleSettings::new();
+        for i in 0..40 {
+            model = model.status(format!("Row {i:02}"), || "x".into());
+        }
+        let mut p = SettingsPanel::new(Box::new(model));
+        // Moving on the Config tab doesn't scroll the Status tab.
+        p.key(key(KeyCode::Right));
+        p.key(key(KeyCode::Down));
+        p.key(key(KeyCode::Left));
+        let shown = text(&p.rows(80, 14));
+        assert!(shown.contains("Row 00") && !shown.contains("Row 39"), "{shown}");
+        p.key(key(KeyCode::End));
+        let shown = text(&p.rows(80, 14));
+        assert!(shown.contains("Row 39") && !shown.contains("Row 00"), "{shown}");
+        p.key(key(KeyCode::PageUp));
+        p.key(key(KeyCode::Home));
+        p.key(key(KeyCode::Down));
+        let shown = text(&p.rows(80, 14));
+        assert!(shown.contains("Row 01") && !shown.contains("Row 00"), "{shown}");
+    }
+
+    #[test]
+    fn an_open_picker_keeps_its_choice_in_view() {
+        let mut model = SimpleSettings::new();
+        for i in 0..6 {
+            model = model.toggle(format!("Switch {i}"), || false, |_| Ok(()));
+        }
+        let model = model.choice(
+            "Colour",
+            || {
+                (0..20)
+                    .map(|i| Choice::new(i.to_string(), format!("Shade {i:02}"), ""))
+                    .collect()
+            },
+            || Some("19".into()),
+            |_| Ok(()),
+        );
+        let mut p = SettingsPanel::new(Box::new(model)).on_config();
+        p.key(key(KeyCode::End));
+        p.key(key(KeyCode::Enter));
+        let shown = text(&p.rows(80, 14));
+        assert!(shown.contains("❯ Shade 19"), "{shown}");
+    }
+
+    #[test]
+    fn opening_a_picker_clears_an_old_error() {
+        let model = SimpleSettings::new()
+            .toggle("Watch", || false, |_| anyhow::bail!("disk full"))
+            .choice("Colour", || vec![Choice::new("r", "Red", "")], || None, |_| Ok(()));
+        let mut p = SettingsPanel::new(Box::new(model)).on_config();
+        p.key(key(KeyCode::Enter));
+        assert!(text(&p.rows(80, 30)).contains("disk full"));
+        p.key(key(KeyCode::Down));
+        p.key(key(KeyCode::Enter));
+        assert!(!text(&p.rows(80, 30)).contains("disk full"));
     }
 }
