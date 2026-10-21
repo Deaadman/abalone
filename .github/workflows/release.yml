@@ -53,9 +53,11 @@ jobs:
           }
 
       # Before publishing, since a version on crates.io can't be taken back.
+      # The notes go outside the checkout: cargo publish refuses files git
+      # doesn't know about.
       - name: Check CHANGELOG.md has notes for this version
         shell: pwsh
-        run: ./templates/release-notes.ps1 -Version $env:GITHUB_REF_NAME -OutDir notes -Changelog CHANGELOG.md
+        run: ./templates/release-notes.ps1 -Version $env:GITHUB_REF_NAME -OutDir "$env:RUNNER_TEMP/notes" -Changelog CHANGELOG.md
 
       - uses: dtolnay/rust-toolchain@stable
 
