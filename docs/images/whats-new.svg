@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="872" height="104" viewBox="0 0 872 104" font-family="Cascadia Mono, Consolas, Menlo, monospace" font-size="14">
+<rect width="872" height="104" rx="8" fill="#16161e"/>
+<text x="24.4" y="29" fill="#78c878" font-weight="bold" textLength="16.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">✓ </text>
+<text x="41.2" y="29" fill="#d8d8e0" font-weight="bold" textLength="243.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Custom demo updated to v0.2.0</text>
+<text x="284.8" y="29" fill="#8c8c8c" textLength="109.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> · what's new</text>
+<text x="24.4" y="47" fill="#ff8c00" textLength="33.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  • </text>
+<text x="58.0" y="47" fill="#d8d8e0" textLength="445.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Release notes, from the changelog built into the app.</text>
+<text x="24.4" y="65" fill="#ff8c00" textLength="33.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  • </text>
+<text x="58.0" y="65" fill="#d8d8e0" textLength="453.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">/tui default, to run in the terminal's own scrollback.</text>
+<text x="24.4" y="83" fill="#8c8c8c" textLength="428.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  github.com/me/demo/releases/tag/0.2.0 for details</text>
+</svg>

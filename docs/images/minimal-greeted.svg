@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="872" height="500" viewBox="0 0 872 500" font-family="Cascadia Mono, Consolas, Menlo, monospace" font-size="14">
+<rect width="872" height="500" rx="8" fill="#16161e"/>
+<text x="24.4" y="47" fill="#7aa2f7" textLength="58.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─────╮</text>
+<text x="24.4" y="65" fill="#7aa2f7" textLength="16.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│ </text>
+<text x="41.2" y="65" fill="#ebebeb" font-weight="bold" xml:space="preserve">❯</text>
+<text x="49.6" y="65" fill="#8c8c8c" xml:space="preserve">▁</text>
+<text x="58.0" y="65" fill="#7aa2f7" textLength="25.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  │</text>
+<text x="108.4" y="65" fill="#d8d8e0" font-weight="bold" textLength="42.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Hello</text>
+<text x="24.4" y="83" fill="#7aa2f7" textLength="58.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─────╯</text>
+<rect x="16.0" y="124" width="25.2" height="18" fill="#2d2d2d"/>
+<text x="16.0" y="137" fill="#8c8c8c" textLength="25.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> ❯ </text>
+<rect x="41.2" y="124" width="806.4" height="18" fill="#2d2d2d"/>
+<text x="41.2" y="137" fill="#ebebeb" textLength="806.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">/greet --name Sam                                                                               </text>
+<text x="16.0" y="173" fill="#d8d8e0" textLength="100.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> Hello, Sam!</text>
+<text x="16.0" y="407" fill="#7aa2f7" textLength="33.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  | </text>
+<text x="49.6" y="407" fill="#7aa2f7" textLength="84.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Greeting… </text>
+<text x="133.6" y="407" fill="#8c8c8c" textLength="33.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(0s)</text>
+<text x="16.0" y="425" fill="#646464" textLength="831.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">───────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="16.0" y="443" fill="#8c8c8c" textLength="16.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">❯ </text>
+<text x="32.8" y="443" fill="#8c8c8c" textLength="159.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Type / for commands</text>
+<text x="16.0" y="461" fill="#646464" textLength="831.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">───────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="16.0" y="479" fill="#8c8c8c" textLength="243.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  /help for commands and keys</text>
+</svg>

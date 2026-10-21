@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="872" height="122" viewBox="0 0 872 122" font-family="Cascadia Mono, Consolas, Menlo, monospace" font-size="14">
+<rect width="872" height="122" rx="8" fill="#16161e"/>
+<text x="16.0" y="29" fill="#ff8c00" textLength="33.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  ⠧ </text>
+<text x="49.6" y="29" fill="#ff8c00" textLength="75.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Waiting… </text>
+<text x="125.2" y="29" fill="#8c8c8c" textLength="33.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(3s)</text>
+<text x="301.6" y="29" fill="#78c878" textLength="285.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Update installed! Restart to apply</text>
+<text x="587.2" y="29" fill="#8c8c8c" textLength="25.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> · </text>
+<text x="612.4" y="29" fill="#e6be50" textLength="226.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">No fruit picked · /pick one</text>
+<text x="16.0" y="47" fill="#646464" textLength="831.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">───────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="16.0" y="65" fill="#8c8c8c" textLength="16.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">❯ </text>
+<text x="32.8" y="65" fill="#8c8c8c" textLength="126.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Try /pick apple</text>
+<text x="16.0" y="83" fill="#646464" textLength="831.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">───────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="16.0" y="101" fill="#8c8c8c" textLength="243.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  /help for commands and keys</text>
+<text x="259.6" y="101" fill="#ff8c00" font-weight="bold" textLength="117.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  · demo build</text>
+</svg>

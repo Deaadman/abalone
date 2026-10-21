@@ -14,7 +14,7 @@
 //! });
 //! ```
 //!
-//! Write what's worth knowing with [`write`] (`"CMD"`, `"INFO"`…); keep
+//! Write what's worth knowing with [`write()`] (`"CMD"`, `"INFO"`…); keep
 //! people's own data, like command arguments, out of it.
 
 use std::fs::{self, File};
@@ -90,7 +90,7 @@ pub fn write(level: &str, text: &str) {
     let _ = writeln!(log.file, "[{secs:>9.3}s] {level:<5} {body}");
 }
 
-/// " · details in <log>", for messages that ask people to report something.
+/// " · details in `<log>`", for messages that ask people to report something.
 pub fn hint() -> String {
     path().map_or_else(String::new, |p| format!(" · details in {}", p.display()))
 }

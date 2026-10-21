@@ -1,5 +1,11 @@
-# Checks every push to main and every pull request on Windows, macOS and
-# Linux: formatting, clippy with warnings as errors, then the tests.
+# Checks every push to main and every pull request, and every release
+# first (release.yml runs it and only publishes when it passes):
+#
+# - on Windows, macOS and Linux: formatting, clippy with warnings as errors,
+#   and the tests, with every feature and with none;
+# - the API docs build with no broken links;
+# - the pictures in docs/images match what the code draws now;
+# - CHANGELOG.md's format.
 
 name: CI
 
@@ -7,10 +13,11 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -33,9 +40,37 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --check
-      - name: Clippy
+      - name: Clippy, every feature
         run: cargo clippy --all-features --all-targets --locked
-      - name: Test
+      - name: Clippy, no features
+        run: cargo clippy --no-default-features --all-targets --locked
+      - name: Test, every feature
         run: cargo test --all-features --locked
-      - name: Without optional features
+      - name: Test, no features
         run: cargo test --no-default-features --locked
+
+  docs:
+    name: Docs, pictures and changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: API docs
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --all-features --no-deps --locked
+      - name: Pictures are current
+        run: |
+          cargo test --all-features --locked --test docs_pictures -- --ignored
+          git diff --exit-code -- docs/images || {
+            echo "::error::docs/images is out of date: run cargo test --all-features --test docs_pictures -- --ignored and commit the pictures"
+            exit 1
+          }
+          test -z "$(git ls-files --others --exclude-standard docs/images)" || {
+            echo "::error::new pictures in docs/images aren't committed"
+            exit 1
+          }
+      - name: Changelog
+        shell: pwsh
+        run: ./templates/release-notes.ps1 -Check -Changelog CHANGELOG.md

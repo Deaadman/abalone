@@ -1,10 +1,10 @@
 //! The least an app needs: its commands and what a line does.
 //!
-//!     cargo run -p shellkit --example minimal
+//!     cargo run --example minimal
 
 use shellkit::{App, CommandInfo, Ctx, NoPanel, Shell, outln};
 
-struct Hello;
+pub struct Hello;
 
 impl App for Hello {
     type Msg = ();
@@ -29,6 +29,11 @@ impl App for Hello {
     }
 }
 
+/// The shell, ready to run (the docs' pictures draw it too).
+pub fn shell() -> Shell<Hello> {
+    Shell::new(Hello).title("Hello")
+}
+
 fn main() -> anyhow::Result<()> {
-    Shell::new(Hello).title("Hello").run()
+    shell().run()
 }

@@ -1,7 +1,8 @@
 //! Every part swapped: theme, logo, spinner, a skin tweak, help, settings,
 //! a notice, and a panel of the app's own.
 //!
-//!     cargo run -p shellkit --example custom
+//!     cargo run --example custom
+//!     cargo run --example custom -- --inline
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -86,11 +87,11 @@ impl Completer for Fruit {
 }
 
 /// A list to choose from, full screen.
-struct ListPanel {
+pub struct ListPanel {
     sel: usize,
 }
 
-enum ListEvent {
+pub enum ListEvent {
     Chosen(usize),
 }
 
@@ -122,7 +123,7 @@ impl Panel for ListPanel {
     }
 }
 
-struct Demo {
+pub struct Demo {
     fruit: Arc<Mutex<Option<String>>>,
 }
 
@@ -193,6 +194,13 @@ impl App for Demo {
 }
 
 fn main() -> anyhow::Result<()> {
+    // `--inline` starts in the terminal's own scrollback; /tui switches.
+    let inline = std::env::args().any(|a| a == "--inline");
+    shell(if inline { Tui::Inline } else { Tui::Fullscreen }).run()
+}
+
+/// The shell, ready to run (the docs' pictures draw it too).
+pub fn shell(tui: Tui) -> Shell<Demo> {
     let fruit = Arc::new(Mutex::new(None));
     let colour = Arc::new(Mutex::new(Some("orange".to_owned())));
     let fast = Arc::new(Mutex::new(true));
@@ -211,12 +219,7 @@ fn main() -> anyhow::Result<()> {
         .spinner(Frames::new(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]))
         .skin(Tagged)
         .help(help)
-        // `--inline` starts in the terminal's own scrollback; /tui switches.
-        .tui(if std::env::args().any(|a| a == "--inline") {
-            Tui::Inline
-        } else {
-            Tui::Fullscreen
-        })
+        .tui(tui)
         .release_notes(CHANGELOG)
         .settings(move || {
             let (f1, c1, c2, s1, s2) = (f1.clone(), c1.clone(), c2.clone(), s1.clone(), s2.clone());
@@ -248,5 +251,4 @@ fn main() -> anyhow::Result<()> {
                     },
                 )
         })
-        .run()
 }
