@@ -60,6 +60,26 @@ pub fn fit_width(text: &str, n: usize) -> &str {
     text
 }
 
+/// `row` cut to `w` columns, ending in `…` when anything was cut.
+pub fn fit_row(row: Row, w: usize) -> Row {
+    if row_width(&row) <= w {
+        return row;
+    }
+    let mut left = w.saturating_sub(1);
+    let mut out = Row::new();
+    for (style, text) in row {
+        let part = fit_width(&text, left);
+        left -= text_width(part);
+        let cut = part.len() < text.len();
+        out.push((style, part.to_owned()));
+        if cut {
+            out.push((style, "…".into()));
+            break;
+        }
+    }
+    out
+}
+
 /// The row's text without styles.
 pub fn row_text(row: &Row) -> String {
     row.iter().map(|(_, s)| s.as_str()).collect()
@@ -177,6 +197,15 @@ pub fn half_blocks(pixels: &[Vec<Option<Color>>]) -> Vec<Row> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rows_cut_with_an_ellipsis() {
+        let row: Row = vec![(Style::default(), "ab".into()), (Style::default().bold(), "山田cd".into())];
+        assert_eq!(row_text(&fit_row(row.clone(), 10)), "ab山田cd");
+        assert_eq!(row_text(&fit_row(row.clone(), 5)), "ab山…");
+        assert_eq!(row_text(&fit_row(row.clone(), 4)), "ab…");
+        assert!(fit_row(row, 0).iter().all(|(_, s)| s.is_empty() || s == "…"));
+    }
 
     #[test]
     fn wrapping() {

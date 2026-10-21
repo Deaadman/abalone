@@ -313,6 +313,8 @@ struct InlineState {
     cursor_row: usize,
     /// Clear the screen before the next draw.
     wipe: bool,
+    /// The terminal's width at the last draw, to notice it change.
+    width: Option<usize>,
 }
 
 /// The app's completer, with the values of `/tui`.
@@ -665,9 +667,13 @@ impl<A: App> Shell<A> {
         self.pretend = job;
     }
 
-    /// Re-read the app's commands, header, notices, footer and placeholder.
+    /// Re-read the app's commands, header, notices, footer and placeholder,
+    /// and an open settings panel's Status tab.
     pub fn refresh(&mut self) {
         self.app.refresh();
+        if let Some(p) = self.settings_panel.as_mut() {
+            p.refresh_status();
+        }
         let mut commands = self.app.commands();
         let mut builtins = vec![];
         let mut add = |name: &'static str, about: String, commands: &mut Vec<CommandInfo>| {
@@ -705,6 +711,7 @@ impl<A: App> Shell<A> {
 
     /// Open the screen and run until the user quits.
     pub fn run(mut self) -> anyhow::Result<()> {
+        crate::theme::default_for_terminal();
         let (tx, rx) = mpsc::channel();
         out::capture(Some(tx));
         self.rx = Some(rx);
@@ -1252,20 +1259,38 @@ impl<A: App> Shell<A> {
     /// Inline: print the output not yet printed into the scrollback, then
     /// redraw the input box (or panel) under it in place of the last one.
     fn draw_inline(&mut self, out: &mut impl Write) -> io::Result<()> {
-        let (w, h) = terminal::size().map(|(w, h)| (w as usize, h as usize))?;
-        let (w, h) = (w.max(20), h.max(4));
+        let (cols, lines) = terminal::size().map(|(w, h)| (w as usize, h as usize))?;
+        self.draw_inline_at(out, cols, lines)
+    }
+
+    /// `draw_inline` for a `cols`×`lines` terminal.
+    fn draw_inline_at(&mut self, out: &mut impl Write, cols: usize, lines: usize) -> io::Result<()> {
+        // Laid out for at least 20×4, but printed clipped to the real width,
+        // so no row ever wraps.
+        let (w, h) = (cols.max(20), lines.max(4));
+        let fits = lines.saturating_sub(1).max(1);
+        // A new width re-wraps what's on screen, so where the last draw
+        // starts is lost: clear the screen and print again the end of the
+        // output that fits above the input box, then the box.
+        let resized = self.inline.width.is_some_and(|old| old != cols);
+        self.inline.wipe |= resized;
         // The header stays live while the logo animates, then is printed.
         let animating = self.inline.committed == 0 && self.logo_frame + 1 < self.logo.frames();
         let done = if animating { 0 } else { self.transcript.len() };
-        let commit = self.item_rows(&self.transcript[self.inline.committed.min(done)..done], w);
+        let from = if resized { 0 } else { self.inline.committed.min(done) };
+        let mut commit = self.item_rows(&self.transcript[from..done], w);
         let mut live = if animating { self.transcript_rows(w) } else { vec![] };
         let above = live.len();
         let (bottom, cursor) = self.bottom(w, (h * 4 / 5).max(14).min(h - 1), h - 1);
         live.extend(bottom);
         // Never taller than the screen, or the top couldn't be redrawn.
-        let cut = live.len().saturating_sub(h - 1);
+        let cut = live.len().saturating_sub(fits);
         live.drain(..cut);
         let cursor = cursor.and_then(|(col, row)| (above + row).checked_sub(cut).map(|r| (col, r)));
+        if resized {
+            commit.drain(..commit.len().saturating_sub(fits - live.len()));
+        }
+        self.inline.width = Some(cols);
 
         queue!(out, Hide)?;
         if std::mem::take(&mut self.inline.wipe) {
@@ -1275,14 +1300,14 @@ impl<A: App> Shell<A> {
         }
         queue!(out, Clear(ClearType::FromCursorDown))?;
         for row in &commit {
-            print_row(out, row, w)?;
+            print_row(out, row, cols)?;
             queue!(out, Print("\r\n"))?;
         }
         for (i, row) in live.iter().enumerate() {
             if i > 0 {
                 queue!(out, Print("\r\n"))?;
             }
-            print_row(out, row, w)?;
+            print_row(out, row, cols)?;
         }
         let last = live.len().saturating_sub(1);
         match cursor {
@@ -1290,7 +1315,7 @@ impl<A: App> Shell<A> {
                 if last > row {
                     queue!(out, MoveUp((last - row) as u16))?;
                 }
-                queue!(out, MoveToColumn(col as u16), Show)?;
+                queue!(out, MoveToColumn(col.min(cols.saturating_sub(1)) as u16), Show)?;
                 self.inline.cursor_row = row;
             }
             None => {
@@ -1556,5 +1581,55 @@ mod tests {
             !plain.commands().iter().any(|c| c.name == "release-notes"),
             "only with notes"
         );
+    }
+
+    #[test]
+    fn inline_starts_over_when_the_width_changes() {
+        // Without escape codes, crossterm would draw on the real console.
+        #[cfg(windows)]
+        if !crossterm::ansi_support::supports_ansi() {
+            return;
+        }
+        let mut shell = Shell::new(Echoer { ran: vec![] }).logo(crate::logo::NoLogo);
+        shell.transcript.push(Item::Line(Kind::Out, "日本語".repeat(20)));
+        let draw = |shell: &mut Shell<Echoer>, cols| {
+            let mut out = Vec::new();
+            shell.draw_inline_at(&mut out, cols, 24).unwrap();
+            String::from_utf8(out).unwrap()
+        };
+        let clear_all = "\x1b[2J";
+        let first = draw(&mut shell, 80);
+        assert!(first.contains("日本"));
+        let again = draw(&mut shell, 80);
+        assert!(!again.contains("日本") && !again.contains(clear_all), "printed once");
+        let narrower = draw(&mut shell, 30);
+        assert!(narrower.contains(clear_all), "the screen is cleared");
+        assert!(narrower.contains("日本"), "and the output printed again");
+        // Clipped to the width: no row wider than 29 columns (29 is odd, so
+        // a cut would split a wide character).
+        for line in narrower.split("\r\n") {
+            let text: String = strip_escapes(line);
+            assert!(crate::style::text_width(&text) <= 29, "{text:?}");
+        }
+    }
+
+    /// `s` without its CSI escape codes.
+    fn strip_escapes(s: &str) -> String {
+        let mut out = String::new();
+        let mut chars = s.chars();
+        while let Some(c) = chars.next() {
+            if c == '\x1b' {
+                // `ESC [`, parameters, then a final letter.
+                chars.next();
+                for c in chars.by_ref() {
+                    if c.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            } else {
+                out.push(c);
+            }
+        }
+        out
     }
 }

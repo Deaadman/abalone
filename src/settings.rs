@@ -33,7 +33,7 @@ use std::sync::mpsc::{self, Receiver};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::out::{Kind, Line};
-use crate::style::{Row, Style, pad};
+use crate::style::{Row, Style, fit_width, pad, text_width};
 use crate::theme::theme;
 use crate::widgets::{accent_rule, text_field, title_with_tabs};
 
@@ -313,6 +313,11 @@ impl SettingsPanel {
     pub fn on_config(mut self) -> Self {
         self.tab = 1;
         self
+    }
+
+    /// Read the Status tab again, for news from outside the panel.
+    pub fn refresh_status(&mut self) {
+        self.status = self.model.status();
     }
 
     pub fn model(&mut self) -> &mut dyn SettingsModel {
@@ -626,8 +631,8 @@ impl SettingsPanel {
             return Some(rows.len() - 1);
         }
         if let Some(n) = &p.note {
-            let why: String = if n.chars().count() > 76 {
-                n.chars().take(75).chain(std::iter::once('…')).collect()
+            let why: String = if text_width(n) > 76 {
+                format!("{}…", fit_width(n, 75))
             } else {
                 n.clone()
             };
@@ -645,7 +650,7 @@ impl SettingsPanel {
         let name_w = p
             .options
             .iter()
-            .map(|o| o.name.chars().count() + 2)
+            .map(|o| text_width(&o.name) + 2)
             .max()
             .unwrap_or(0)
             .max(label_w);

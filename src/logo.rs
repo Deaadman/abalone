@@ -30,7 +30,7 @@ impl Logo for DefaultLogo {
 
     fn rows(&self, frame: usize) -> Vec<Row> {
         let t = theme();
-        let (frame_style, prompt) = (Style::fg(t.accent), Style::fg(t.bright).bold());
+        let (frame_style, prompt) = (Style::fg(t.accent), Style::default().bold());
         // The cursor blinks twice, then stays.
         let cursor = if frame >= 5 || frame.is_multiple_of(2) {
             "▁"

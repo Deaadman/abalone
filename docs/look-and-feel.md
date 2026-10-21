@@ -35,6 +35,20 @@ To let people pick their own colours, turn on the `theme-file` feature and read 
 
 Your own panels can use the same colours with `abalone::theme()`.
 
+### Light backgrounds
+
+The colours are made for a dark background. When the terminal says its background is light (through `COLORFGBG`, or the classic Windows console's colours), the default theme darkens itself to read on it. Windows Terminal doesn't say, so give people a setting and call `abalone::set_light_background(true)` before the shell runs.
+
+With a theme of your own, pass it through `for_terminal`, and colours your panels use directly through `abalone::readable`:
+
+```rust
+Shell::new(app).theme(MINE.for_terminal())
+
+Style::fg(abalone::readable(MY_GREEN))
+```
+
+`Theme::on_light` gives the light version whatever the terminal says.
+
 ## Logo
 
 The logo sits at the top left, beside your header lines. It can play a short animation when the shell opens. The default is a small terminal window.

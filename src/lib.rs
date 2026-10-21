@@ -87,9 +87,9 @@ pub use shell::{App, Ctx, Frame, Item, NoPanel, Panel, PanelEvent, Shell, Tui};
 pub use spinner::{Classic, Frames, Spinner};
 pub use status::{Notice, UpdateNote};
 pub use style::{
-    Row, Style, char_width, fit_width, half_blocks, highlight, pad, rgb, row_text, row_width, text_width, wrap,
+    Row, Style, char_width, fit_row, fit_width, half_blocks, highlight, pad, rgb, row_text, row_width, text_width, wrap,
 };
-pub use theme::{Theme, hex, set_theme, theme};
+pub use theme::{Theme, for_light, hex, light_background, readable, set_light_background, set_theme, theme};
 
 /// Keys, for panels.
 pub use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};

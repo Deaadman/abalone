@@ -3,11 +3,9 @@
 # CHANGELOG.md must have a section for it. Abalone goes to crates.io first,
 # then a GitHub release follows with that section as its description.
 #
-# crates.io: after the first version is on crates.io, add this workflow
-# (release.yml, no environment) under the crate's Settings > Trusted
-# Publishing, and it publishes with a token that lasts 30 minutes. Until
-# then, it uses a CARGO_REGISTRY_TOKEN repository secret; the first publish
-# needs one. Delete the secret once trusted publishing works.
+# crates.io: the crate's Settings > Trusted Publishing names this workflow
+# (release.yml, no environment), so it publishes with a token that lasts
+# 30 minutes; no secret is kept.
 #
 # A manual run checks but never publishes (the jobs below only publish
 # from a tag).
@@ -61,15 +59,13 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      # Fails until trusted publishing is set up; the secret is used then.
       - name: Get a token by trusted publishing
         id: auth
         uses: rust-lang/crates-io-auth-action@v1
-        continue-on-error: true
 
       - name: Publish
         env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token || secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: cargo publish --locked
 
   github:

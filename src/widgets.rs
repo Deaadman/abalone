@@ -6,7 +6,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crossterm::style::Color;
 
-use crate::style::{Row, Style, pad, wrap};
+use crate::style::{Row, Style, fit_row, pad, wrap};
 use crate::theme::theme;
 
 /// Width of a field's label column.
@@ -14,13 +14,15 @@ pub const LABEL_W: usize = 16;
 
 /// A full panel: a rule, the title, the tabs, the body cut or padded to fit,
 /// and a hint, exactly `h` rows.
+/// The title and the hint end in `…` when they don't fit.
 pub fn frame(w: usize, h: usize, title: Row, tabs: Option<(&[&str], usize)>, body: Vec<Row>, hint: &str) -> Vec<Row> {
-    let mut rows: Vec<Row> = vec![accent_rule(w), title, vec![]];
+    let fit = |row: Row| fit_row(row, w.saturating_sub(1));
+    let mut rows: Vec<Row> = vec![accent_rule(w), fit(title), vec![]];
     if let Some((names, tab)) = tabs {
-        rows.push(tabs_row(names, tab));
+        rows.push(fit(tabs_row(names, tab)));
         rows.push(vec![]);
     }
-    let footer = [vec![], vec![(Style::fg(theme().muted), format!("  {hint}"))]];
+    let footer = [vec![], fit(vec![(Style::fg(theme().muted), format!("  {hint}"))])];
     let body_h = h.saturating_sub(rows.len() + footer.len()).max(1);
     let mut body = body;
     body.truncate(body_h);

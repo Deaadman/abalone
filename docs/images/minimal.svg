@@ -2,7 +2,7 @@
 <rect width="872" height="500" rx="8" fill="#16161e"/>
 <text x="24.4" y="47" fill="#7aa2f7" textLength="58.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─────╮</text>
 <text x="24.4" y="65" fill="#7aa2f7" textLength="16.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│ </text>
-<text x="41.2" y="65" fill="#ebebeb" font-weight="bold" xml:space="preserve">❯</text>
+<text x="41.2" y="65" fill="#d8d8e0" font-weight="bold" xml:space="preserve">❯</text>
 <text x="49.6" y="65" fill="#8c8c8c" xml:space="preserve">▁</text>
 <text x="58.0" y="65" fill="#7aa2f7" textLength="25.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  │</text>
 <text x="108.4" y="65" fill="#d8d8e0" font-weight="bold" textLength="42.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Hello</text>

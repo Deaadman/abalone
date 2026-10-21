@@ -204,7 +204,8 @@ pub fn menu(items: &[Suggestion], sel: usize, typed: &str, max: usize) -> Vec<Ro
         .max()
         .unwrap_or(0)
         .clamp(16, 32);
-    let (muted, mark) = (Style::fg(t.muted), Style::fg(t.bright).bold());
+    // Matches in the terminal's own text colour, which reads on any background.
+    let (muted, mark) = (Style::fg(t.muted), Style::default().bold());
     let mut rows = Vec::new();
     for (i, item) in items.iter().enumerate().skip(first).take(max) {
         let label = pad(&item.label, label_w);
@@ -324,6 +325,10 @@ mod tests {
         assert_eq!(rows.len(), 9, "a window of rows plus the count");
         assert!(row_text(&rows[7]).starts_with("  ❯ /c9"));
         assert!(row_text(&rows[8]).contains("10/10"));
+        // Matched letters keep the terminal's text colour, so they read on
+        // a light background as well as a dark one.
+        let marked: Vec<_> = rows[0].iter().filter(|(s, _)| s.bold).collect();
+        assert!(!marked.is_empty() && marked.iter().all(|(s, _)| s.fg.is_none()));
     }
 
     #[test]

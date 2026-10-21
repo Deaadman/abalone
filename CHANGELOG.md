@@ -21,6 +21,17 @@ See docs/development.md, "Releasing". CI checks this file's format.
 
 ## [Unreleased]
 
+### Added
+
+- `Theme::on_light`, `Theme::for_terminal`, `readable` and `for_light` give colours that read on a light background, and `light_background` and `set_light_background` say whether the terminal has one.
+
+### Fixed
+
+- On a light background the default theme darkens to read there, and matched letters in the command menu and the default logo's prompt use the terminal's own text colour instead of near white.
+- Menu, release-notes and settings picker widths count terminal columns, so wide characters line up.
+- Inline mode (`/tui default`) clears and redraws when the terminal's width changes, instead of leaving copies of the input box behind, and never prints rows wider than a terminal narrower than 20 columns.
+- An open settings panel's Status tab is read again when the app refreshes, instead of only after a change in the panel.
+
 ## [1.0.0] - 2026-10-21
 
 ### Added

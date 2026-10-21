@@ -67,11 +67,6 @@ A release goes to crates.io, then to GitHub with its notes, when the [release wo
 
 The release workflow runs all of CI first. Then it checks that the tag matches `Cargo.toml` and that `CHANGELOG.md` has a section for it, publishes Abalone to crates.io, and makes a GitHub release with that section as its description. A version on crates.io can't be deleted or published again, only yanked, so check before you tag.
 
-The workflow gets its crates.io token by [trusted publishing](https://crates.io/docs/trusted-publishing), which only works once Abalone is on crates.io. For the first release:
-
-1. Make an API token at [crates.io/settings/tokens](https://crates.io/settings/tokens) with the `publish-new` and `publish-update` scopes, and add it to this repository as an Actions secret named `CARGO_REGISTRY_TOKEN`.
-2. Release as above. The workflow uses the secret.
-3. On crates.io, under Abalone's Settings > Trusted Publishing, add GitHub with owner `Deaadman`, repository `abalone` and workflow `release.yml`.
-4. Delete the secret on GitHub and the token on crates.io. Later releases need neither.
+The workflow gets its crates.io token by [trusted publishing](https://crates.io/docs/trusted-publishing): Abalone's Settings > Trusted Publishing on crates.io names GitHub owner `Deaadman`, repository `abalone` and workflow `release.yml`, so no token is stored anywhere. If publishing fails at "Get a token by trusted publishing", check that entry still matches.
 
 Follow [Semantic Versioning](https://semver.org): a change that breaks apps' code bumps the first number (1.4 to 2.0), a new feature the middle one (1.4 to 1.5), and a fix the last.

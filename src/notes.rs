@@ -19,7 +19,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::out::{Kind, Line};
-use crate::style::{Row, Style, pad};
+use crate::style::{Row, Style, pad, text_width};
 use crate::theme::theme;
 use crate::widgets::{Item, is_close, list_rows, step, step_of};
 
@@ -155,7 +155,7 @@ impl NotesPanel {
         let count = |n: usize, one: &str, many: &str| format!("{n} {}", if n == 1 { one } else { many });
         let label_w = releases
             .iter()
-            .map(|r| r.version.chars().count() + 8)
+            .map(|r| text_width(&r.version) + 8)
             .max()
             .unwrap_or(0)
             .max(8)
