@@ -1,4 +1,4 @@
-# Working on shellkit
+# Working on Abalone
 
 ## Building and testing
 
@@ -51,13 +51,13 @@ Look over the changed pictures before committing. CI fails if they're out of dat
 To try a change in an app before it's released, point the app at your copy in its `Cargo.toml`:
 
 ```toml
-[patch."https://github.com/Deaadman/shellkit"]
-shellkit = { path = "../shellkit" }
+[patch."https://github.com/Deaadman/abalone"]
+abalone = { path = "../abalone" }
 ```
 
 ## Releasing
 
-Apps depend on shellkit by git tag, so a release is a tag and its notes.
+Apps depend on Abalone by git tag, so a release is a tag and its notes.
 
 1. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, add a fresh `## [Unreleased]` above it, and update the links at the bottom.
 2. Set `version` in `Cargo.toml` to the same version, and commit.

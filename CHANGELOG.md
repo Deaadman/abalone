@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!--
 A version's section is its GitHub release description, so write each entry
-for someone using shellkit in their app: one plain sentence about what
+for someone using Abalone in their app: one plain sentence about what
 changed for them. Changes that break their code go first, under Changed or
 Removed, and say what to do instead.
 
@@ -30,4 +30,4 @@ See docs/development.md, "Releasing". CI checks this file's format.
 - The data folder, settings in a TOML file, and pictures drawn in the terminal.
 - Install scripts for Windows, macOS and Linux, updates from GitHub releases, and the release workflow that publishes them.
 
-[Unreleased]: https://github.com/Deaadman/shellkit/commits/main
+[Unreleased]: https://github.com/Deaadman/abalone/commits/main

@@ -61,7 +61,7 @@ impl Workflow {
                 let (name, runner, target) = PLATFORMS
                     .iter()
                     .find(|(name, ..)| name == p)
-                    .unwrap_or_else(|| panic!("no platform {p:?} in shellkit::release::PLATFORMS"));
+                    .unwrap_or_else(|| panic!("no platform {p:?} in abalone::release::PLATFORMS"));
                 format!("          - platform: {name}\n            runner: {runner}\n            target: {target}\n")
             })
             .collect();

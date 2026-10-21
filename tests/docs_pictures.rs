@@ -8,9 +8,9 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use shellkit::out::Kind;
-use shellkit::status::UpdateNote;
-use shellkit::{Color, Item, KeyCode, KeyEvent, KeyModifiers, Notice, Row, Shell, Tui, update};
+use abalone::out::Kind;
+use abalone::status::UpdateNote;
+use abalone::{Color, Item, KeyCode, KeyEvent, KeyModifiers, Notice, Row, Shell, Tui, update};
 
 #[allow(dead_code)]
 #[path = "../examples/minimal.rs"]
@@ -28,13 +28,13 @@ fn key(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
 }
 
-fn typed<A: shellkit::App>(shell: &mut Shell<A>, text: &str) {
+fn typed<A: abalone::App>(shell: &mut Shell<A>, text: &str) {
     for c in text.chars() {
         shell.key(key(KeyCode::Char(c)));
     }
 }
 
-fn screen<A: shellkit::App>(shell: &mut Shell<A>) -> Vec<Row> {
+fn screen<A: abalone::App>(shell: &mut Shell<A>) -> Vec<Row> {
     shell.render(W, H).rows
 }
 

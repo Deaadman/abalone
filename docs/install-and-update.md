@@ -1,6 +1,6 @@
 # Installing and updating
 
-With the `install` and `update` features, shellkit can install your app, keep it updated from your GitHub releases, and tell people what's new.
+With the `install` and `update` features, Abalone can install your app, keep it updated from your GitHub releases, and tell people what's new.
 
 ## How people install your app
 
@@ -13,7 +13,7 @@ People run one line, and get the newest version on their PATH:
 
 Each script downloads the build for that computer, checks it against the release's list of files and their SHA-256 hashes, adds the app to the PATH, and runs `my-app install`. On Arm Windows and Arm Macs, an x64 build is used when there isn't one of their own.
 
-shellkit writes both scripts for you. Keep them in your repository, with a test that fails when they're out of date:
+Abalone writes both scripts for you. Keep them in your repository, with a test that fails when they're out of date:
 
 ```rust
 let scripts = InstallScript::new("My App", "my-app", "me/my-app");
@@ -68,7 +68,7 @@ The notes come from your `CHANGELOG.md`. People can read every version's notes a
 
 ## Publishing a release
 
-shellkit has templates for this too. Keep them in your repository and test that they're current, like the install scripts:
+Abalone has templates for this too. Keep them in your repository and test that they're current, like the install scripts:
 
 | Template | What it is |
 | --- | --- |

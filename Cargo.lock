@@ -3,6 +3,22 @@
 version = 4
 
 [[package]]
+name = "abalone"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "crossterm",
+ "directories",
+ "serde",
+ "serde_json",
+ "sha2",
+ "toml",
+ "ureq",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -686,22 +702,6 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
-]
-
-[[package]]
-name = "shellkit"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "crossterm",
- "directories",
- "serde",
- "serde_json",
- "sha2",
- "toml",
- "ureq",
- "windows-sys 0.61.2",
 ]
 
 [[package]]

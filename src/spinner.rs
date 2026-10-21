@@ -5,7 +5,7 @@
 //!
 //! ```
 //! use std::time::Duration;
-//! use shellkit::{Spinner, Style};
+//! use abalone::{Spinner, Style};
 //! let dots = |t: Duration| (Style::default(), ".".repeat(1 + (t.as_millis() / 300 % 3) as usize));
 //! assert_eq!(dots.frame(Duration::ZERO).1, ".");
 //! ```

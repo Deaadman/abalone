@@ -7,7 +7,7 @@
 //! print through [`out`], so they work the same from the command line.
 //!
 //! ```no_run
-//! use shellkit::{App, CommandInfo, Ctx, NoPanel, Shell, outln};
+//! use abalone::{App, CommandInfo, Ctx, NoPanel, Shell, outln};
 //!
 //! struct Hello;
 //!

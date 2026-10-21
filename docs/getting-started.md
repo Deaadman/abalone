@@ -2,11 +2,11 @@
 
 ## Add it
 
-shellkit isn't on crates.io yet. Add it from GitHub, with the [features](#features) you need:
+Abalone isn't on crates.io yet. Add it from GitHub, with the [features](#features) you need:
 
 ```toml
 [dependencies]
-shellkit = { git = "https://github.com/Deaadman/shellkit", features = ["clap"] }
+abalone = { git = "https://github.com/Deaadman/abalone", features = ["clap"] }
 ```
 
 ## Your app
@@ -14,7 +14,7 @@ shellkit = { git = "https://github.com/Deaadman/shellkit", features = ["clap"] }
 Your app is one type that implements `App`. Two things are required: the list of commands, and what to do when someone sends a line.
 
 ```rust
-use shellkit::{App, CommandInfo, Ctx, NoPanel, Shell, outln};
+use abalone::{App, CommandInfo, Ctx, NoPanel, Shell, outln};
 
 struct Hello;
 

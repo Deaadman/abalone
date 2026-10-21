@@ -1,20 +1,22 @@
-# shellkit
+# Abalone
 
-[![CI](https://img.shields.io/github/actions/workflow/status/Deaadman/shellkit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Deaadman/shellkit/actions/workflows/ci.yml) ![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square) [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/Deaadman/abalone/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Deaadman/abalone/actions/workflows/ci.yml) ![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square) [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
-shellkit gives your Rust command-line app a full-screen shell. Output fills the screen and an input box stays at the bottom. Typing `/` opens a menu of your commands, a status bar shows what's running, and `/help` and `/settings` open in place of the input box.
+Abalone gives your Rust command-line app a full-screen shell. Output fills the screen and an input box stays at the bottom. Typing `/` opens a menu of your commands, a status bar shows what's running, and `/help` and `/settings` open in place of the input box.
 
 Every part has a sensible default, and you can change any of it: the colours, logo, spinner, help, settings, and panels of your own.
+
+It was inspired by [Claude Code](https://claude.com/claude-code)'s terminal interface, to make apps that feel like it easy to build. It isn't made by or affiliated with Anthropic.
 
 ![The custom example: a pixel-art logo, a sent command, and a running one on the status bar](docs/images/custom.svg)
 
 ## Add it
 
-shellkit isn't on crates.io yet. Add it from GitHub:
+Abalone isn't on crates.io yet. Add it from GitHub:
 
 ```toml
 [dependencies]
-shellkit = { git = "https://github.com/Deaadman/shellkit" }
+abalone = { git = "https://github.com/Deaadman/abalone" }
 ```
 
 ## Your first app
@@ -22,7 +24,7 @@ shellkit = { git = "https://github.com/Deaadman/shellkit" }
 Say what your commands are, and what to do when someone sends a line:
 
 ```rust
-use shellkit::{App, CommandInfo, Ctx, NoPanel, Shell, outln};
+use abalone::{App, CommandInfo, Ctx, NoPanel, Shell, outln};
 
 struct Hello;
 
@@ -69,7 +71,7 @@ cargo run --example custom
 - [Panels](docs/panels.md): help, settings, release notes, your own, full screen or inline
 - [Logs and files](docs/logs-and-files.md): crash reports, the data folder, settings files, pictures
 - [Installing and updating](docs/install-and-update.md): install scripts, updates and releases
-- [Working on shellkit](docs/development.md): building, testing and releasing it
+- [Working on Abalone](docs/development.md): building, testing and releasing it
 
 ## License
 

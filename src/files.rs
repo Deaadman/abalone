@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn settings_round_trip() {
         let path = std::env::temp_dir()
-            .join(format!("shellkit-files-{}", std::process::id()))
+            .join(format!("abalone-files-{}", std::process::id()))
             .join("config.toml");
         assert_eq!(load_toml::<Settings>(&path).unwrap(), Settings::default());
         let s = Settings {
@@ -109,6 +109,6 @@ mod tests {
     fn data_dir_prefers_what_it_is_given() {
         assert_eq!(data_dir("demo", Some(Path::new("here"))).unwrap(), Path::new("here"));
         assert_eq!(data_dir_env("my-app"), "MY_APP_DATA_DIR");
-        assert!(data_dir("shellkit-test-app", None).unwrap().ends_with("data"));
+        assert!(data_dir("abalone-test-app", None).unwrap().ends_with("data"));
     }
 }

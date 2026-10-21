@@ -5,8 +5,8 @@
 //! on the default instead of replacing it:
 //!
 //! ```
-//! use shellkit::skin::{self, Skin};
-//! use shellkit::{Row, Style};
+//! use abalone::skin::{self, Skin};
+//! use abalone::{Row, Style};
 //!
 //! /// The default footer, with a clock-like tag on the end.
 //! struct Mine;
@@ -86,7 +86,7 @@ pub trait Skin {
     }
 }
 
-/// The look shellkit ships with.
+/// The look Abalone ships with.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DefaultSkin;
 

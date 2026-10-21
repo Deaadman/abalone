@@ -33,7 +33,7 @@ Shell::new(app).theme(MINE)
 
 To let people pick their own colours, turn on the `theme-file` feature and read a TOML file with `Theme::from_toml(text, Theme::DEFAULT)`. Each colour is written as `"#rrggbb"`, and any left out keep the default.
 
-Your own panels can use the same colours with `shellkit::theme()`.
+Your own panels can use the same colours with `abalone::theme()`.
 
 ## Logo
 

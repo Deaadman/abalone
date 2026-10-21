@@ -7,9 +7,9 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use shellkit::skin::{self, Skin};
-use shellkit::widgets::{self, Item};
-use shellkit::{
+use abalone::skin::{self, Skin};
+use abalone::widgets::{self, Item};
+use abalone::{
     App, Choice, CommandInfo, Completer, Ctx, Frames, Help, KeyEvent, Notice, Panel, PanelEvent, PixelLogo, Row, Shell,
     SimpleSettings, Style, Suggestion, Theme, Tui, outln, rgb,
 };
@@ -37,7 +37,7 @@ const CHANGELOG: &str = "# Changelog
 
 /// Orange on dark grey.
 const THEME: Theme = Theme {
-    accent: shellkit::Color::Rgb { r: 255, g: 140, b: 0 },
+    accent: abalone::Color::Rgb { r: 255, g: 140, b: 0 },
     ..Theme::DEFAULT
 };
 
@@ -102,7 +102,7 @@ impl Panel for ListPanel {
         if widgets::is_close(&key) {
             return PanelEvent::Close;
         }
-        if key.code == shellkit::KeyCode::Enter {
+        if key.code == abalone::KeyCode::Enter {
             return PanelEvent::Event(ListEvent::Chosen(self.sel));
         }
         widgets::step(&mut self.sel, widgets::step_of(&key), 20);
@@ -140,7 +140,7 @@ impl App for Demo {
     }
 
     fn run(&mut self, line: &str, ctx: &mut Ctx<Self>) {
-        let words = shellkit::split_words(line);
+        let words = abalone::split_words(line);
         match words[0].trim_start_matches('/') {
             "pick" => {
                 let fruit = words.get(1).cloned();
@@ -156,7 +156,7 @@ impl App for Demo {
                     format!("waited {secs}s")
                 });
             }
-            other => shellkit::errln!("No command {other}"),
+            other => abalone::errln!("No command {other}"),
         }
     }
 
@@ -208,7 +208,7 @@ pub fn shell(tui: Tui) -> Shell<Demo> {
     let help = Help::new()
         .text(
             "General",
-            "A demo of everything shellkit can change.\n\n# Commands\n  /pick takes a fruit; Tab completes it.\n  /list opens a panel of the app's own.",
+            "A demo of everything Abalone can change.\n\n# Commands\n  /pick takes a fruit; Tab completes it.\n  /list opens a panel of the app's own.",
         )
         .commands("Commands")
         .link("https://example.com/demo");

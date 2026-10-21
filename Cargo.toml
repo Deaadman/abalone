@@ -1,10 +1,10 @@
 [package]
-name = "shellkit"
+name = "abalone"
 version = "0.1.0"
 edition = "2024"
 description = "A full-screen interactive shell for CLI apps: header, input box with a command menu, status bar, help and settings panels, plus a self-updater and installer"
 license = "MIT"
-repository = "https://github.com/Deaadman/shellkit"
+repository = "https://github.com/Deaadman/abalone"
 readme = "README.md"
 keywords = ["tui", "shell", "terminal", "cli", "crossterm"]
 categories = ["command-line-interface"]

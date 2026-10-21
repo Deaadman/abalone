@@ -7,8 +7,8 @@
 //!
 //! ```no_run
 //! let data_dir = std::path::PathBuf::from("data");
-//! shellkit::log::start(&data_dir.join("logs"), "my-app", "My App 1.0.0", "shell");
-//! shellkit::log::guard("My App", || {
+//! abalone::log::start(&data_dir.join("logs"), "my-app", "My App 1.0.0", "shell");
+//! abalone::log::guard("My App", || {
 //!     // the app
 //!     Ok(())
 //! });
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn prune_keeps_the_newest() {
-        let dir = std::env::temp_dir().join(format!("shellkit-prune-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("abalone-prune-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         for day in 1..=5 {

@@ -341,7 +341,7 @@ pub fn make_executable(path: &Path) -> Result<()> {
 /// here shows up as a failing test rather than a stale installer:
 ///
 /// ```
-/// let script = shellkit::install::InstallScript::new("My App", "my-app", "me/my-app");
+/// let script = abalone::install::InstallScript::new("My App", "my-app", "me/my-app");
 /// assert!(script.render().contains("$Repo = 'me/my-app'"));
 /// assert!(script.render_sh().contains("REPO='me/my-app'"));
 /// ```
@@ -440,7 +440,7 @@ mod tests {
     use super::*;
 
     fn temp(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("shellkit-install-{name}-{}", unique_suffix()));
+        let dir = std::env::temp_dir().join(format!("abalone-install-{name}-{}", unique_suffix()));
         fs::create_dir_all(&dir).unwrap();
         dir
     }

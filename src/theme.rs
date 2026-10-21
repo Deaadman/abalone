@@ -3,10 +3,10 @@
 //! `ShellBuilder::theme`), and components read it with [`theme`].
 //!
 //! ```
-//! use shellkit::{Theme, rgb};
+//! use abalone::{Theme, rgb};
 //! let mine = Theme { accent: rgb((255, 140, 0)), ..Theme::default() };
-//! shellkit::set_theme(mine);
-//! assert_eq!(shellkit::theme().accent, rgb((255, 140, 0)));
+//! abalone::set_theme(mine);
+//! assert_eq!(abalone::theme().accent, rgb((255, 140, 0)));
 //! ```
 
 use std::sync::RwLock;

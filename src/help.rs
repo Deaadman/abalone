@@ -2,7 +2,7 @@
 //! drawn in place of the input box until Esc.
 //!
 //! ```
-//! use shellkit::{Help, HelpTab};
+//! use abalone::{Help, HelpTab};
 //! let help = Help::new()
 //!     .text("General", "My app does things.\n\n# Getting started\n  /init sets it up.")
 //!     .commands("Commands")

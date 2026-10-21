@@ -1410,7 +1410,7 @@ mod tests {
 
     #[test]
     fn tui_switches_and_remembers() {
-        let path = std::env::temp_dir().join(format!("shellkit-tui-{}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("abalone-tui-{}", std::process::id()));
         let _ = std::fs::remove_file(&path);
         let mut shell = Shell::new(Echoer { ran: vec![] }).tui_file(&path);
         assert_eq!(shell.tui_mode(), Tui::Fullscreen, "full screen by default");

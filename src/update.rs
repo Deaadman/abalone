@@ -22,14 +22,14 @@
 //! ```no_run
 //! # use std::time::Duration;
 //! # struct App;
-//! # impl shellkit::App for App {
-//! #     type Msg = (); type Panel = shellkit::NoPanel;
-//! #     fn commands(&self) -> Vec<shellkit::CommandInfo> { vec![] }
-//! #     fn run(&mut self, _: &str, _: &mut shellkit::Ctx<Self>) {}
+//! # impl abalone::App for App {
+//! #     type Msg = (); type Panel = abalone::NoPanel;
+//! #     fn commands(&self) -> Vec<abalone::CommandInfo> { vec![] }
+//! #     fn run(&mut self, _: &str, _: &mut abalone::Ctx<Self>) {}
 //! # }
-//! use shellkit::update::Updater;
+//! use abalone::update::Updater;
 //! let updater = Updater::new("My App", "my-app", "me/my-app", env!("CARGO_PKG_VERSION"), "data").unwrap();
-//! shellkit::Shell::new(App)
+//! abalone::Shell::new(App)
 //!     .update_check(Duration::from_secs(6 * 60 * 60), "/update", updater.background(|| true))
 //!     .run()
 //!     .unwrap();
@@ -498,7 +498,7 @@ mod tests {
 
     #[test]
     fn whats_new_shows_once() {
-        let dir = std::env::temp_dir().join(format!("shellkit-whats-new-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("abalone-whats-new-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let mut extra = Map::new();
         extra.insert("helper".into(), serde_json::json!({"tag": "v1"}));

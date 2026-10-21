@@ -1,7 +1,7 @@
 # Publishes a release when a tag like 0.2.0 (no v prefix) is pushed: CI
 # runs first, then the tag must match the version in Cargo.toml and
 # CHANGELOG.md must have a section for it, which becomes the release's
-# description. Apps depend on shellkit by tag, so there's nothing to build.
+# description. Apps depend on Abalone by tag, so there's nothing to build.
 
 name: Release
 
@@ -26,9 +26,9 @@ jobs:
         shell: pwsh
         run: |
           $version = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages |
-            Where-Object name -eq 'shellkit' | Select-Object -ExpandProperty version
+            Where-Object name -eq 'abalone' | Select-Object -ExpandProperty version
           if ($version -ne $env:GITHUB_REF_NAME) {
-            throw "tag $env:GITHUB_REF_NAME does not match shellkit's version $version in Cargo.toml"
+            throw "tag $env:GITHUB_REF_NAME does not match Abalone's version $version in Cargo.toml"
           }
 
       - name: Read the release notes from CHANGELOG.md

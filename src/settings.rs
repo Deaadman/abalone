@@ -7,7 +7,7 @@
 //!
 //! ```
 //! use std::sync::{Arc, Mutex};
-//! use shellkit::{Choice, SimpleSettings};
+//! use abalone::{Choice, SimpleSettings};
 //! let on = Arc::new(Mutex::new(true));
 //! let (get, set) = (on.clone(), on.clone());
 //! let settings = SimpleSettings::new()

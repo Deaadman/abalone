@@ -14,11 +14,11 @@ My App crashed. Please send this file with your bug report:
 ```rust
 fn main() {
     let cli = Cli::parse();
-    let data_dir = shellkit::files::data_dir("my-app", cli.data_dir.as_deref()).unwrap();
-    shellkit::log::start(&data_dir.join("logs"), "my-app", "My App 1.0.0", "shell");
-    shellkit::log::guard("My App", || match cli.command {
+    let data_dir = abalone::files::data_dir("my-app", cli.data_dir.as_deref()).unwrap();
+    abalone::log::start(&data_dir.join("logs"), "my-app", "My App 1.0.0", "shell");
+    abalone::log::guard("My App", || match cli.command {
         Some(command) => run(command),
-        None if shellkit::term::interactive() => Shell::new(app).run(),
+        None if abalone::term::interactive() => Shell::new(app).run(),
         None => Ok(Cli::command().print_help()?),
     });
 }

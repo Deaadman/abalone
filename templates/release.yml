@@ -6,7 +6,7 @@
 # notes). The version's section of CHANGELOG.md is both the release's
 # description and those notes; the release stops if it has none.
 #
-# From shellkit (shellkit::release::Workflow): change it there, not here.
+# From Abalone (abalone::release::Workflow): change it there, not here.
 
 name: Release
 

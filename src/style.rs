@@ -1,5 +1,5 @@
 //! Styled text: a screen row is a list of pieces, each in its own style.
-//! Everything shellkit draws is built from these, so a component's output
+//! Everything Abalone draws is built from these, so a component's output
 //! can be changed or extended with ordinary `Vec` operations.
 
 use crossterm::style::Color;

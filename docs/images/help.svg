@@ -14,7 +14,7 @@
 <rect x="83.2" y="160" width="75.6" height="18" fill="#ebebeb"/>
 <text x="83.2" y="173" fill="#000000" textLength="75.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> General </text>
 <text x="175.6" y="173" fill="#d8d8e0" textLength="84.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> Commands </text>
-<text x="16.0" y="209" fill="#d8d8e0" textLength="361.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  A demo of everything shellkit can change.</text>
+<text x="16.0" y="209" fill="#d8d8e0" textLength="352.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  A demo of everything Abalone can change.</text>
 <text x="16.0" y="245" fill="#d8d8e0" font-weight="bold" textLength="84.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  Commands</text>
 <text x="16.0" y="263" fill="#d8d8e0" textLength="352.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">    /pick takes a fruit; Tab completes it.</text>
 <text x="16.0" y="281" fill="#d8d8e0" textLength="344.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">    /list opens a panel of the app's own.</text>

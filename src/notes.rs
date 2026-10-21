@@ -6,14 +6,14 @@
 //!
 //! ```
 //! # struct App;
-//! # impl shellkit::App for App {
-//! #     type Msg = (); type Panel = shellkit::NoPanel;
-//! #     fn commands(&self) -> Vec<shellkit::CommandInfo> { vec![] }
-//! #     fn run(&mut self, _: &str, _: &mut shellkit::Ctx<Self>) {}
+//! # impl abalone::App for App {
+//! #     type Msg = (); type Panel = abalone::NoPanel;
+//! #     fn commands(&self) -> Vec<abalone::CommandInfo> { vec![] }
+//! #     fn run(&mut self, _: &str, _: &mut abalone::Ctx<Self>) {}
 //! # }
 //! # let changelog = "# Changelog\n";
 //! // include_str!("../CHANGELOG.md") in an app.
-//! let shell = shellkit::Shell::new(App).release_notes(changelog);
+//! let shell = abalone::Shell::new(App).release_notes(changelog);
 //! ```
 
 use crossterm::event::{KeyCode, KeyEvent};

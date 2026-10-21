@@ -2,7 +2,7 @@
 //! one pixel wide and two tall, so a square image looks square.
 //!
 //! ```
-//! use shellkit::image::Image;
+//! use abalone::image::Image;
 //!
 //! let red = [255, 0, 0, 255];
 //! let img = Image::new(4, 4, vec![red; 16]);

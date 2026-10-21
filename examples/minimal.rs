@@ -2,7 +2,7 @@
 //!
 //!     cargo run --example minimal
 
-use shellkit::{App, CommandInfo, Ctx, NoPanel, Shell, outln};
+use abalone::{App, CommandInfo, Ctx, NoPanel, Shell, outln};
 
 pub struct Hello;
 
@@ -15,7 +15,7 @@ impl App for Hello {
     }
 
     fn run(&mut self, line: &str, ctx: &mut Ctx<Self>) {
-        let words = shellkit::split_words(line);
+        let words = abalone::split_words(line);
         let name = words
             .iter()
             .position(|w| w == "--name")
