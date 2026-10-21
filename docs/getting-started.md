@@ -6,7 +6,7 @@ Abalone isn't on crates.io yet. Add it from GitHub, with the [features](#feature
 
 ```toml
 [dependencies]
-abalone = { git = "https://github.com/Deaadman/abalone", features = ["clap"] }
+abalone = { git = "https://github.com/Deaadman/abalone", tag = "1.0.0", features = ["clap"] }
 ```
 
 ## Your app

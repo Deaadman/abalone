@@ -21,6 +21,8 @@ See docs/development.md, "Releasing". CI checks this file's format.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-21
+
 ### Added
 
 - A full-screen shell: a header and logo, an input box with a command menu, a status bar and a footer, each of which you can change.
@@ -30,4 +32,5 @@ See docs/development.md, "Releasing". CI checks this file's format.
 - The data folder, settings in a TOML file, and pictures drawn in the terminal.
 - Install scripts for Windows, macOS and Linux, updates from GitHub releases, and the release workflow that publishes them.
 
-[Unreleased]: https://github.com/Deaadman/abalone/commits/main
+[Unreleased]: https://github.com/Deaadman/abalone/compare/1.0.0...HEAD
+[1.0.0]: https://github.com/Deaadman/abalone/releases/tag/1.0.0
