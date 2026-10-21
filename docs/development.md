@@ -59,7 +59,7 @@ abalone = { path = "../abalone" }
 
 ## Releasing
 
-Apps depend on Abalone by git tag, so a release is a tag and its notes.
+Apps depend on Abalone by git tag, so a release is a tag and its notes. The [release workflow](../.github/workflows/release.yml) is turned off for now: uncomment its `push` trigger to turn it on.
 
 1. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, add a fresh `## [Unreleased]` above it, and update the links at the bottom.
 2. Set `version` in `Cargo.toml` to the same version, and commit.
