@@ -200,7 +200,10 @@ mod tests {
 
     #[test]
     fn rows_cut_with_an_ellipsis() {
-        let row: Row = vec![(Style::default(), "ab".into()), (Style::default().bold(), "山田cd".into())];
+        let row: Row = vec![
+            (Style::default(), "ab".into()),
+            (Style::default().bold(), "山田cd".into()),
+        ];
         assert_eq!(row_text(&fit_row(row.clone(), 10)), "ab山田cd");
         assert_eq!(row_text(&fit_row(row.clone(), 5)), "ab山…");
         assert_eq!(row_text(&fit_row(row.clone(), 4)), "ab…");
