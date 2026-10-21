@@ -1,10 +1,16 @@
-# Publishes a release when a tag like 0.2.0 (no v prefix) is pushed: CI
+# Publishes a release when a tag like 1.0.0 (no v prefix) is pushed: CI
 # runs first, then the tag must match the version in Cargo.toml and
-# CHANGELOG.md must have a section for it, which becomes the release's
-# description. Apps depend on Abalone by tag, so there's nothing to build.
+# CHANGELOG.md must have a section for it. Abalone goes to crates.io first,
+# then a GitHub release follows with that section as its description.
+#
+# crates.io: after the first version is on crates.io, add this workflow
+# (release.yml, no environment) under the crate's Settings > Trusted
+# Publishing, and it publishes with a token that lasts 30 minutes. Until
+# then, it uses a CARGO_REGISTRY_TOKEN repository secret; the first publish
+# needs one. Delete the secret once trusted publishing works.
 #
 # Turned off until the first release: tags start nothing, and a manual run
-# checks but never publishes (the job below only publishes from a tag). To
+# checks but never publishes (the jobs below only publish from a tag). To
 # turn it on, uncomment the `push` trigger below.
 
 name: Release
@@ -21,11 +27,16 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  release:
+  crates-io:
+    name: Publish to crates.io
     needs: ci
     # Only from a tag: a manual run from a branch checks but never publishes.
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # For trusted publishing.
+      id-token: write
     steps:
       - uses: actions/checkout@v7
 
@@ -37,6 +48,31 @@ jobs:
           if ($version -ne $env:GITHUB_REF_NAME) {
             throw "tag $env:GITHUB_REF_NAME does not match Abalone's version $version in Cargo.toml"
           }
+
+      # Before publishing, since a version on crates.io can't be taken back.
+      - name: Check CHANGELOG.md has notes for this version
+        shell: pwsh
+        run: ./templates/release-notes.ps1 -Version $env:GITHUB_REF_NAME -OutDir notes -Changelog CHANGELOG.md
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Fails until trusted publishing is set up; the secret is used then.
+      - name: Get a token by trusted publishing
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+        continue-on-error: true
+
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token || secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked
+
+  github:
+    name: GitHub release
+    needs: crates-io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
 
       - name: Read the release notes from CHANGELOG.md
         shell: pwsh

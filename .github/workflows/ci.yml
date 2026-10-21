@@ -5,7 +5,7 @@
 #   and the tests, with every feature and with none;
 # - the API docs build with no broken links;
 # - the pictures in docs/images match what the code draws now;
-# - CHANGELOG.md's format;
+# - CHANGELOG.md's format, and that the crate packs and builds for crates.io;
 # - no crate in Cargo.lock has a security advisory.
 
 name: CI
@@ -51,7 +51,7 @@ jobs:
         run: cargo test --no-default-features --locked
 
   docs:
-    name: Docs, pictures and changelog
+    name: Docs, pictures, changelog and package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -75,6 +75,9 @@ jobs:
       - name: Changelog
         shell: pwsh
         run: ./templates/release-notes.ps1 -Check -Changelog CHANGELOG.md
+      # Packs and builds the crate as crates.io would get it, without publishing.
+      - name: Package
+        run: cargo publish --dry-run --locked
 
   audit:
     name: Security advisories

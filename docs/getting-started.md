@@ -2,11 +2,11 @@
 
 ## Add it
 
-Abalone isn't on crates.io yet. Add it from GitHub, with the [features](#features) you need:
+Add it from crates.io, with the [features](#features) you need:
 
 ```toml
 [dependencies]
-abalone = { git = "https://github.com/Deaadman/abalone", tag = "1.0.0", features = ["clap"] }
+abalone = { version = "1.0.0", features = ["clap"] }
 ```
 
 ## Your app

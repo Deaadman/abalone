@@ -8,7 +8,6 @@ repository = "https://github.com/Deaadman/abalone"
 readme = "README.md"
 keywords = ["tui", "shell", "terminal", "cli", "crossterm"]
 categories = ["command-line-interface"]
-publish = false
 
 # docs.rs builds with every feature, so the docs show the APIs behind them.
 [package.metadata.docs.rs]

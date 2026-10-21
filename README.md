@@ -1,6 +1,6 @@
 # Abalone
 
-[![CI](https://img.shields.io/github/actions/workflow/status/Deaadman/abalone/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Deaadman/abalone/actions/workflows/ci.yml) ![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square) [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![crates.io](https://img.shields.io/crates/v/abalone?style=flat-square)](https://crates.io/crates/abalone) [![docs.rs](https://img.shields.io/docsrs/abalone?style=flat-square)](https://docs.rs/abalone) [![CI](https://img.shields.io/github/actions/workflow/status/Deaadman/abalone/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Deaadman/abalone/actions/workflows/ci.yml) ![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square) [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 Abalone gives your Rust command-line app a full-screen shell. Output fills the screen and an input box stays at the bottom. Typing `/` opens a menu of your commands, a status bar shows what's running, and `/help` and `/settings` open in place of the input box.
 
@@ -12,11 +12,8 @@ It was inspired by [Claude Code](https://claude.com/claude-code)'s terminal inte
 
 ## Add it
 
-Abalone isn't on crates.io yet. Add it from GitHub:
-
-```toml
-[dependencies]
-abalone = { git = "https://github.com/Deaadman/abalone", tag = "1.0.0" }
+```sh
+cargo add abalone
 ```
 
 ## Your first app
