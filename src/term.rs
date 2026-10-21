@@ -9,6 +9,7 @@ use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, SetT
 use crossterm::{execute, queue};
 
 use crate::style::{Row, fit_width, text_width};
+use crate::theme::readable;
 
 /// Raw mode with bracketed paste, titled, on the alternate screen or the
 /// terminal's own; all of it is restored (the old title too) however the
@@ -95,6 +96,11 @@ pub fn interactive() -> bool {
 }
 
 /// Print a row clipped to `w` columns (one short, so the last column never wraps).
+///
+/// On a light background, text with no background of its own is darkened
+/// until it reads there (see `readable`), so an app's colours chosen for dark
+/// terminals still work. Block characters are pictures (images, logos), not
+/// text, and keep their colours.
 pub fn print_row(out: &mut impl Write, row: &Row, w: usize) -> io::Result<()> {
     let mut left = w.saturating_sub(1);
     for (style, text) in row {
@@ -103,7 +109,9 @@ pub fn print_row(out: &mut impl Write, row: &Row, w: usize) -> io::Result<()> {
         }
         let piece = fit_width(text, left);
         left -= text_width(piece);
+        let picture = piece.chars().any(|c| matches!(c, '▀' | '▄' | '█'));
         if let Some(c) = style.fg {
+            let c = if style.bg.is_none() && !picture { readable(c) } else { c };
             queue!(out, SetForegroundColor(c))?;
         }
         if let Some(c) = style.bg {

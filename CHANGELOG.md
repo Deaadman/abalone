@@ -30,6 +30,8 @@ See docs/development.md, "Releasing". CI checks this file's format.
 - On a light background the default theme darkens to read there, and matched letters in the command menu and the default logo's prompt use the terminal's own text colour instead of near white.
 - Menu, release-notes and settings picker widths count terminal columns, so wide characters line up.
 - Inline mode (`/tui default`) clears and redraws when the terminal's width changes, instead of leaving copies of the input box behind, and never prints rows wider than a terminal narrower than 20 columns.
+- On a light background, text an app draws in its own colours is darkened at paint time until it reads there; pictures in block characters keep theirs.
+- Panel titles, tabs and key hints end in `…` when the terminal is too narrow, instead of being cut mid-word. `fit_row` does the same for any row.
 - An open settings panel's Status tab is read again when the app refreshes, instead of only after a change in the panel.
 
 ## [1.0.0] - 2026-10-21
